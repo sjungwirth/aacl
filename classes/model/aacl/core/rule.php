@@ -2,7 +2,7 @@
 
 /**
  * Access rule model
- * 
+ *
  * @see			http://github.com/banks/aacl
  * @package		AACL
  * @uses		Auth
@@ -11,7 +11,7 @@
  * @copyright	(c) Paul Banks 2010
  * @license		MIT
  */
-class Model_AACL_Rule extends Jelly_AACL
+abstract class Model_AACL_Core_Rule extends Jelly_AACL
 {
 	public static function initialize(Jelly_Meta $meta)
 	{
@@ -47,14 +47,14 @@ class Model_AACL_Rule extends Jelly_AACL
               )),
             ));
 	}
-	
+
 	/**
 	 * Check if rule matches current request
     * CHANGED: allows_access_to accepts now resource_id
-	 * 
+	 *
 	 * @param string|AACL_Resource	AACL_Resource object or it's id that user requested access to
 	 * @param string        action requested [optional]
-	 * @return 
+	 * @return
 	 */
 	public function allows_access_to($resource, $action = NULL)
 	{
@@ -89,7 +89,7 @@ class Model_AACL_Rule extends Jelly_AACL
          // Get string id
          $resource_id = $resource;
       }
-      
+
       // Make sure action matches
       if ( ! is_null($action) AND ! is_null($this->action) AND $action !== $this->action)
       {
@@ -137,10 +137,10 @@ class Model_AACL_Rule extends Jelly_AACL
       // All looks rosy!
       return TRUE;
 	}
-	
+
 	/**
 	 * Override create to remove less specific rules when creating a rule
-	 * 
+	 *
 	 * @return $this
 	 */
 	public function create()
@@ -154,7 +154,7 @@ class Model_AACL_Rule extends Jelly_AACL
       else
          $delete = Jelly::delete($this)
             ->where( $fields['role']->column, '=', NULL );
-		
+
 		// If resource is NULL we don't need any more rules - we just delete every rule for this role
 		if ( ! is_null($this->resource) )
 		{
@@ -164,29 +164,29 @@ class Model_AACL_Rule extends Jelly_AACL
 				->or_where('resource', 'LIKE', $this->resource.'.%')
 				->where_close();
 		}
-		
+
 		if ( ! is_null($this->action))
 		{
 			// If this rule has an action, only remove other rules with the same action
 			$delete->where('action', '=', $this->action);
 		}
-		
+
 		if ( ! is_null($this->condition))
 		{
 			// If this rule has a condition, only remove other rules with the same condition
 			$delete->where('condition', '=', $this->condition);
-		}		
-		
+		}
+
 		// Do the delete
 		$delete->execute();
-		
+
 		// Create new rule
 		parent::save();
 	}
-	
+
 	/**
 	 * Override Default model actions
-	 * 
+	 *
 	 * @param	bool	$return_current [optional]
 	 * @return	mixed
 	 */
@@ -197,9 +197,9 @@ class Model_AACL_Rule extends Jelly_AACL
 			// We don't know anything about what the user intends to do with us!
 			return NULL;
 		}
-		
+
 		// Return default model actions
 		return array('grant', 'revoke');
 	}
-	
-} // End  Model_AACL_Rule
+
+} // End Model_AACL_Core_Rule

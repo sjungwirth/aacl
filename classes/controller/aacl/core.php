@@ -2,7 +2,7 @@
 
 /**
  * Base class for access controlled controllers
- * 
+ *
  * @see			http://github.com/banks/aacl
  * @package		AACL
  * @uses		Auth
@@ -11,22 +11,22 @@
  * @copyright	(c) Paul Banks 2010
  * @license		MIT
  */
-abstract class Controller_AACL extends Controller_Template implements AACL_Resource
+abstract class Controller_AACL_Core extends Controller_Template implements AACL_Resource
 {
 	/**
 	 * AACL_Resource::acl_id() implementation
-	 * 
-	 * @return	string 
+	 *
+	 * @return	string
 	 */
 	public function acl_id()
 	{
 		// Controller namespace, controller name
 		return 'c:'.strtolower($this->request->controller);
 	}
-	
+
 	/**
 	 * AACL_Resource::acl_actions() implementation
-	 * 
+	 *
 	 * @param	bool	$return_current [optional]
 	 * @return	mixed
 	 */
@@ -36,12 +36,12 @@ abstract class Controller_AACL extends Controller_Template implements AACL_Resou
 		{
 			return $this->request->action;
 		}
-		
+
 		// Find all actions in this class
 		$reflection = new ReflectionClass($this);
-		
+
 		$actions = array();
-		
+
 		// Add all public methods that start with 'action_'
 		foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method)
 		{
@@ -50,13 +50,13 @@ abstract class Controller_AACL extends Controller_Template implements AACL_Resou
 				$actions[] = substr($method->name, 7);
 			}
 		}
-		
+
 		return $actions;
 	}
-	
+
 	/**
 	 * AACL_Resource::acl_conditions() implementation
-	 * 
+	 *
 	 * @param	Model_User	$user [optional] logged in user model
 	 * @param	object    	$condition [optional] condition to test
 	 * @return	mixed
@@ -74,12 +74,12 @@ abstract class Controller_AACL extends Controller_Template implements AACL_Resou
 			return FALSE;
 		}
 	}
-	
+
 	/**
 	 * AACL_Resource::acl_instance() implementation
-	 * 
+	 *
 	 * Note that the object instance returned should not be used for anything except querying the acl_* methods
-	 * 
+	 *
 	 * @param	string	Class name of object required
 	 * @return	Object
 	 */
@@ -89,16 +89,16 @@ abstract class Controller_AACL extends Controller_Template implements AACL_Resou
 		$instance = new $class_name(Request::instance());
 		// Remove "controller_" part from name
 		$controller_name = strtolower(substr($class_name, 11));
-		
+
 		if ($controller_name !== Request::instance()->controller)
 		{
 			// Manually override controller name and action
 			$instance->request->controller = strtolower($controller_name);
-			
+
 			$instance->request->action = NULL;
 		}
-		
+
 		return $instance;
 	}
-	
-} // End  Controller_AACL
+
+} // End Controller_AACL_Core

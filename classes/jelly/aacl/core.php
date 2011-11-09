@@ -2,7 +2,7 @@
 
 /**
  * Base class for access controlled Jelly Models
- * 
+ *
  * @see			http://github.com/banks/aacl
  * @package		AACL
  * @uses		Auth
@@ -11,12 +11,12 @@
  * @copyright	(c) Paul Banks 2010
  * @license		MIT
  */
-abstract class Jelly_AACL extends Jelly_Model implements AACL_Resource
+abstract class Jelly_AACL_Core extends Jelly_Model implements AACL_Resource
 {
 	/**
 	 * AACL_Resource::acl_id() implementation
-	 * 
-	 * @return	string 
+	 *
+	 * @return	string
 	 */
 	public function acl_id()
 	{
@@ -24,7 +24,7 @@ abstract class Jelly_AACL extends Jelly_Model implements AACL_Resource
 		if (is_array($this->meta()->primary_key()))
 		{
 			$id = '';
-			
+
 			foreach ($this->meta()->primary_key() as $name)
 			{
 				$id .= (string) $this->$name;
@@ -34,19 +34,19 @@ abstract class Jelly_AACL extends Jelly_Model implements AACL_Resource
 		{
 			$id = (string) $this->{$this->meta()->primary_key()};
 		}
-		
+
 		if ( ! empty($id))
 		{
 			$id = '.'.$id;
 		}
-		
+
 		// Model namespace, model name, pk
 		return 'm:'.strtolower($this->meta()->model()).$id;
 	}
-	
+
 	/**
 	 * AACL_Resource::acl_actions() implementation
-	 * 
+	 *
 	 * @param	bool	$return_current [optional]
 	 * @return	mixed
 	 */
@@ -57,14 +57,14 @@ abstract class Jelly_AACL extends Jelly_Model implements AACL_Resource
 			// We don't know anything about what the user intends to do with us!
 			return NULL;
 		}
-		
+
 		// Return default model actions
 		return array('create', 'read', 'update', 'delete');
 	}
-	
+
 	/**
 	 * AACL_Resource::acl_conditions() implementation
-	 * 
+	 *
 	 * @param	Model_User	$user [optional] logged in user model
 	 * @param	object    	$condition [optional] condition to test
 	 * @return	mixed
@@ -82,20 +82,20 @@ abstract class Jelly_AACL extends Jelly_Model implements AACL_Resource
 			return FALSE;
 		}
 	}
-	
+
 	/**
 	 * AACL_Resource::acl_instance() implementation
-	 * 
+	 *
 	 * Note that the object instance returned should not be used for anything except querying the acl_* methods
-	 * 
+	 *
 	 * @param	string	Class name of object required
 	 * @return	Object
 	 */
 	public static function acl_instance($class_name)
-	{		
+	{
 		$model_name = strtolower(substr($class_name, 6));
-		
+
 		return Jelly::factory($model_name);
 	}
-	
-} // End  Jelly_AACL
+
+} // End Jelly_AACL_Core

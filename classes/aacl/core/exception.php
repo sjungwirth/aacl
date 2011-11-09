@@ -1,8 +1,8 @@
 <?php defined('SYSPATH') or die ('No direct script access.');
 
 /**
- * 403 "Permission denied" exception
- * 
+ * Base AACL exception
+ *
  * @see			http://github.com/banks/aacl
  * @package		AACL
  * @uses		Auth
@@ -11,10 +11,4 @@
  * @copyright	(c) Paul Banks 2010
  * @license		MIT
  */
-class AACL_Exception_403 extends AACL_Exception 
-{
-	public function __construct()
-	{
-		parent::__construct('Permission Denied');
-	}
-}
+abstract class AACL_Core_Exception extends Kohana_Exception {}
