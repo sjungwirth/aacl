@@ -21,24 +21,26 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
                  'editable' => false,
               )),
               'role' => new Jelly_Field_BelongsTo(array(
-                 'label' => 'Role',
+                 'label'   => 'Role',
+                 'column'  => 'role_id',
+                 'foreign' => AACL::$model_role_tablename.'.id',
               )),
               'resource' => new Jelly_Field_String(array(
                  'label' => 'Controlled resource',
                  'rules' => array(
-                     'max_length' 	=> array(45),
+                     array('max_length', array(':value', 45)),
                  ),
               )),
               'action' => new Jelly_Field_String(array(
                  'label' => 'Controlled action',
                  'rules' => array(
-                     'max_length' 	=> array(25),
+                     array('max_length', array(':value', 25)),
                  ),
               )),
               'condition' => new Jelly_Field_String(array(
                  'label' => 'Access condition',
                  'rules' => array(
-                     'max_length' 	=> array(25),
+                     array('max_length', array(':value', 25)),
                  ),
               )),
             ));
