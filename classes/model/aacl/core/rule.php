@@ -15,32 +15,28 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
 {
 	public static function initialize(Jelly_Meta $meta)
 	{
-		$meta->table('rules')
+		$meta->table(AACL::$model_rule_tablename)
            ->fields(array(
-              'id' => new Field_Primary(array(
+              'id' => new Jelly_Field_Primary(array(
                  'editable' => false,
               )),
-              'role' => new Field_BelongsTo(array(
+              'role' => new Jelly_Field_BelongsTo(array(
                  'label' => 'Role',
-                 'null'=>true,
               )),
-              'resource' => new Field_String(array(
+              'resource' => new Jelly_Field_String(array(
                  'label' => 'Controlled resource',
-                 'null'=>true,
                  'rules' => array(
                      'max_length' 	=> array(45),
                  ),
               )),
-              'action' => new Field_String(array(
+              'action' => new Jelly_Field_String(array(
                  'label' => 'Controlled action',
-                 'null'=>true,
                  'rules' => array(
                      'max_length' 	=> array(25),
                  ),
               )),
-              'condition' => new Field_String(array(
+              'condition' => new Jelly_Field_String(array(
                  'label' => 'Access condition',
-                 'null'=>true,
                  'rules' => array(
                      'max_length' 	=> array(25),
                  ),
@@ -58,7 +54,7 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
 	 */
 	public function allows_access_to($resource, $action = NULL)
 	{
-      if (is_null($this->resource))
+      if (empty($this->resource))
       {
          // No point checking anything else!
          return TRUE;
@@ -91,7 +87,7 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
       }
 
       // Make sure action matches
-      if ( ! is_null($action) AND ! is_null($this->action) AND $action !== $this->action)
+      if ( ! is_null($action) AND ! empty($this->action) AND $action !== $this->action)
       {
          // This rule has a specific action and it doesn't match the specific one passed
          return FALSE;
@@ -128,8 +124,10 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
       }
 
       // Now we know this rule matches the resource, check any match condition
-      if ( ! is_null($this->condition) AND ! $resource->acl_conditions(Auth::instance()->get_user(), $this->condition))
+      if ( ! empty($this->condition)
+           and ! $resource->acl_conditions(AACL::get_loggedin_user(), $this->condition))
       {
+
          // Condition wasn't met (or doesn't exist)
          return FALSE;
       }
@@ -148,12 +146,15 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
       $meta = $this->meta();
       $fields = $meta->fields();
 		// Delete all more specifc rules for this role
-      if( isset($this->_changed['role']))
-         $delete = Jelly::delete($this)
-            ->where( $fields['role']->column, '=', $this->_changed['role'] );
-      else
-         $delete = Jelly::delete($this)
-            ->where( $fields['role']->column, '=', NULL );
+    $delete = $this->_get_base_query();
+    if (isset($this->_changed['role']))
+    {
+      $delete->where($fields['role']->column, '=', $this->_changed['role']);
+    }
+    else
+    {
+      $delete->where($fields['role']->column, '=', NULL);
+    }
 
 		// If resource is NULL we don't need any more rules - we just delete every rule for this role
 		if ( ! is_null($this->resource) )
@@ -178,7 +179,10 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
 		}
 
 		// Do the delete
-		$delete->execute();
+		foreach ($delete->execute() as $rule)
+		{
+				$rule->delete();
+		}
 
 		// Create new rule
 		parent::save();
@@ -200,6 +204,18 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
 
 		// Return default model actions
 		return array('grant', 'revoke');
+	}
+
+
+	/**
+	 * Returns a Jelly query to search for AACL rules
+	 *
+	 * @return Jelly_Query
+	 */
+	protected function _get_base_query()
+	{
+		$query = new Jelly_Request;
+		return $query->query(AACL::$model_rule_tablename);
 	}
 
 } // End Model_AACL_Core_Rule

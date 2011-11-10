@@ -13,12 +13,30 @@
  */
 abstract class AACL_Core
 {
+	public static $model_role_classname = 'Model_Role';
+	public static $model_role_tablename = 'role';
+	public static $model_rule_classname = 'Model_AACL_Rule';
+	public static $model_rule_tablename = 'aacl_rule';
+	public static $model_user_classname = 'Model_User';
+
+
 	/**
 	 * All rules that apply to the currently logged in user
 	 *
-	 * @var	array	contains Model_AACL_Rule objects
+	 * @var	array	contains AACL::$model_rule_classname objects
 	 */
 	protected static $_rules;
+
+	/**
+	 * Returns the currently logged in user
+	 *
+	 * @return AACL::$model_user_classname|NULL logged in user's instance or NULL pointer
+	 */
+	public static function get_loggedin_user()
+	{
+		return Auth::instance()->get_user();
+	}
+
 
 	/**
 	 * Grant access to $role for resource
@@ -34,21 +52,20 @@ abstract class AACL_Core
       // if $role is null — we grant this to everyone
       if( is_null($role) )
       {
-         // Create rule
-         Jelly::factory('aacl_rule', array(
-            'role' => null,
-            'resource' => $resource,
-            'action' => $action,
+        // Create rule
+        AACL::create_rule(
+          array(
+            'role'      => NULL,
+            'resource'  => $resource,
+            'action'    => $action,
             'condition' => $condition,
-         ))->create();
+         ));
       }
       else
       {
          // Normalise $role
-         if ( ! $role instanceof Model_Role)
-         {
-            $role = Jelly::select('role')->where('name', '=', $role)->limit(1)->execute();
-         }
+         $role = AACL::normalise_role($role);
+
          // Check role exists
          if ( ! $role->loaded())
          {
@@ -57,12 +74,14 @@ abstract class AACL_Core
          }
 
          // Create rule
-         Jelly::factory('aacl_rule', array(
-            'role' => $role,
-            'resource' => $resource,
-            'action' => $action,
+         AACL::create_rule(
+          array(
+            'role'      => $role,
+            'resource'  => $resource,
+            'action'    => $action,
             'condition' => $condition,
-         ))->create();
+          )
+         );
       }
 	}
 
@@ -80,17 +99,14 @@ abstract class AACL_Core
 	{
       if( is_null($role) )
       {
-         $model = Jelly::factory('aacl_rule', array(
+         $model = Jelly::factory(AACL::$model_rule_tablename, array(
             'role' => NULL,
          ));
       }
       else
       {
          // Normalise $role
-         if ( ! $role instanceof Model_Role)
-         {
-            $role = Jelly::factory('role', array('name' => $role))->load();
-         }
+         $role = AACL::normalise_role($role);
 
          // Check role exists
          if ( ! $role->loaded())
@@ -99,7 +115,7 @@ abstract class AACL_Core
             return;
          }
 
-         $model = Jelly::factory('aacl_rule', array(
+         $model = Jelly::factory(AACL::$model_rule_tablename, array(
             'role' => $role->id,
          ));
       }
@@ -135,7 +151,7 @@ abstract class AACL_Core
 	 */
 	public static function check(AACL_Resource $resource, $action = NULL)
 	{
-		$user = Auth::instance()->get_user();
+		$user = AACL::get_loggedin_user();
 
       // User is logged in, check rules
 		$rules = self::_get_rules($user);
@@ -156,11 +172,25 @@ abstract class AACL_Core
 			throw new AACL_Exception_401;
 	}
 
+
+  /**
+   * Create an AACL rule
+   *
+   * @param array $fields optional fields' values
+   *
+   * @return NULL
+   */
+  public static function create_rule(array $fields = array())
+  {
+    Jelly::factory(AACL::$model_rule_tablename)->set($fields)->create();
+  }
+
+
 	/**
 	 * Get all rules that apply to user
     * CHANGED
 	 *
-	 * @param 	Model_User|Model_Role|bool 	User, role or everyone
+	 * @param 	AACL::$model_user_classname|AACL::$model_role_classname|bool 	User, role or everyone
 	 * @param 	bool		[optional] Force reload from DB default FALSE
 	 * @return 	array
 	 */
@@ -168,14 +198,14 @@ abstract class AACL_Core
 	{
       if ( ! isset(self::$_rules) || $force_load)
       {
-         $select_query = Jelly::select('aacl_rule');
+         $select_query = Jelly::query(AACL::$model_rule_tablename);
          // Get rules for user
-         if( $user instanceof Model_User && !is_null($user->id))
+         if ($user instanceof AACL::$model_user_classname and $user->loaded())
          {
             self::$_rules = $select_query->where('role','IN', $user->roles->as_array(NULL, 'id'));
          }
          // Get rules for role
-         else if( $user instanceof Model_Role && !is_null($user->id))
+         elseif ($user instanceof AACL::$model_role_classname and $user->loaded())
          {
             self::$_rules = $select_query->where('role','=', $user->id);
          }
@@ -249,6 +279,25 @@ abstract class AACL_Core
 
 		return self::$_resources;
 	}
+
+
+  /**
+   * Normalise role
+   *
+   * @param AACL::$model_role_classname|string $role role instance or role identifier
+   *
+   * @return AACL::$model_role_classname role instance
+   */
+  public static function normalise_role($role)
+  {
+    if ( ! $role instanceof AACL::$model_role_classname)
+    {
+      return Jelly::query(AACL::$model_role_tablename)->where('name', '=', $role)->limit(1)->execute();
+    }
+
+    return $role;
+  }
+
 
    /**
     * FIXED
@@ -349,7 +398,7 @@ abstract class AACL_Core
     */
    public static function granted($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
    {
-      $role = Jelly::select('role')->where('name','=',$role)->limit(1)->execute();
+      $role = Jelly::query(AACL::$model_role_tablename)->where('name','=',$role)->limit(1)->execute();
       $rules = self::_get_rules($role);
 
       foreach( $rules as $rule )

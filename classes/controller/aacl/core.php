@@ -57,12 +57,25 @@ abstract class Controller_AACL_Core extends Controller_Template implements AACL_
 	/**
 	 * AACL_Resource::acl_conditions() implementation
 	 *
-	 * @param	Model_User	$user [optional] logged in user model
+	 * @param	AACL::$model_user_classname 	$user [optional] logged in user model
 	 * @param	object    	$condition [optional] condition to test
 	 * @return	mixed
 	 */
-	public function acl_conditions(Model_User $user = NULL, $condition = NULL)
+	public function acl_conditions($user = NULL, $condition = NULL)
 	{
+		if ( ! $user instanceof AACL::$model_user_classname)
+		{
+			throw new AACL_Exception(
+				'Argument #1 of controller :controllername should be of type :expectedtype: '.
+				':giventype was given',
+				array(
+				  ':controllername' => $this->request->controller(),
+				  ':expectedtype'   => AACL::$model_user_classname,
+				  ':giventype'      => get_class($user),
+				)
+			);
+		}
+
 		if (is_null($user) AND is_null($condition))
 		{
 			// We have no conditions
