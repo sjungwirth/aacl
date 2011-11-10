@@ -50,11 +50,12 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
 	 * Check if rule matches current request
     * CHANGED: allows_access_to accepts now resource_id
 	 *
+   * @param AACL                  AACL instance
 	 * @param string|AACL_Resource	AACL_Resource object or it's id that user requested access to
 	 * @param string        action requested [optional]
 	 * @return
 	 */
-	public function allows_access_to($resource, $action = NULL)
+	public function allows_access_to($aacl, $resource, $action = NULL)
 	{
       if (empty($this->resource))
       {
@@ -127,7 +128,7 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
 
       // Now we know this rule matches the resource, check any match condition
       if ( ! empty($this->condition)
-           and ! $resource->acl_conditions(AACL::get_loggedin_user(), $this->condition))
+           and ! $resource->acl_conditions($aacl->get_loggedin_user(), $this->condition))
       {
 
          // Condition wasn't met (or doesn't exist)
