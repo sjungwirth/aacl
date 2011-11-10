@@ -2,7 +2,7 @@
 
 /**
  * Base AACL exception
- * 
+ *
  * @see			http://github.com/banks/aacl
  * @package		AACL
  * @uses		Auth
@@ -11,4 +11,6 @@
  * @copyright	(c) Paul Banks 2010
  * @license		MIT
  */
-class AACL_Exception extends Kohana_Exception {}
+class AACL_Exception extends AACL_Core_Exception
+{
+}
