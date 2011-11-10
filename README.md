@@ -23,4 +23,7 @@ AACL uses [kohana auth](http://github.com/kohanan/auth) and, optionally, [jelly-
 ckald modified AACL classes to deal with Jelly ORM.
 
 emmtou adapted this port to work with [creatoro jelly port to kohana 3.1](https://github.com/creatoro/jelly)
-and released a version 0.1 (version 0.2 should be a partial rewrite to a non-static module)
+and released :
+
+-  version 0.1 : last static version
+-  version 0.2 : first non-static version
