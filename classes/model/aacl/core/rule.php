@@ -34,13 +34,13 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
               'action' => new Jelly_Field_String(array(
                  'label' => 'Controlled action',
                  'rules' => array(
-                     array('max_length', array(':value', 25)),
+                     array('max_length', array(':value', 45)),
                  ),
               )),
               'condition' => new Jelly_Field_String(array(
                  'label' => 'Access condition',
                  'rules' => array(
-                     array('max_length', array(':value', 25)),
+                     array('max_length', array(':value', 45)),
                  ),
               )),
             ));
