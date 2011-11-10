@@ -25,14 +25,14 @@ abstract class AACL_Core
 	 *
 	 * @var	array	contains AACL::$model_rule_classname objects
 	 */
-	protected static $_rules;
+	protected $_rules;
 
 	/**
 	 * Returns the currently logged in user
 	 *
 	 * @return AACL::$model_user_classname|NULL logged in user's instance or NULL pointer
 	 */
-	public static function get_loggedin_user()
+	public function get_loggedin_user()
 	{
 		return Auth::instance()->get_user();
 	}
@@ -47,13 +47,13 @@ abstract class AACL_Core
 	 * @param	string	condition [optional]
 	 * @return 	void
 	 */
-	public static function grant($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
+	public function grant($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
 	{
       // if $role is null — we grant this to everyone
       if( is_null($role) )
       {
         // Create rule
-        AACL::create_rule(
+        $this->create_rule(
           array(
             'role'      => NULL,
             'resource'  => $resource,
@@ -64,7 +64,7 @@ abstract class AACL_Core
       else
       {
          // Normalise $role
-         $role = AACL::normalise_role($role);
+         $role = $this->normalise_role($role);
 
          // Check role exists
          if ( ! $role->loaded())
@@ -74,7 +74,7 @@ abstract class AACL_Core
          }
 
          // Create rule
-         AACL::create_rule(
+         $this->create_rule(
           array(
             'role'      => $role,
             'resource'  => $resource,
@@ -95,7 +95,7 @@ abstract class AACL_Core
 	 * @param	string	condition [optional]
 	 * @return 	void
 	 */
-	public static function revoke($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
+	public function revoke($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
 	{
       if( is_null($role) )
       {
@@ -106,7 +106,7 @@ abstract class AACL_Core
       else
       {
          // Normalise $role
-         $role = AACL::normalise_role($role);
+         $role = $this->normalise_role($role);
 
          // Check role exists
          if ( ! $role->loaded())
@@ -149,16 +149,16 @@ abstract class AACL_Core
 	 * @throw	AACL_Exception	To identify permission or authentication failure
 	 * @return	void
 	 */
-	public static function check(AACL_Resource $resource, $action = NULL)
+	public function check(AACL_Resource $resource, $action = NULL)
 	{
-		$user = AACL::get_loggedin_user();
+		$user = $this->get_loggedin_user();
 
       // User is logged in, check rules
-		$rules = self::_get_rules($user);
+		$rules = $this->_get_rules($user);
 
 		foreach ($rules as $rule)
 		{
-			if ($rule->allows_access_to($resource, $action))
+			if ($rule->allows_access_to($this, $resource, $action))
 			{
 				// Access granted, just return
 				return true;
@@ -180,7 +180,7 @@ abstract class AACL_Core
    *
    * @return NULL
    */
-  public static function create_rule(array $fields = array())
+  public function create_rule(array $fields = array())
   {
     Jelly::factory(AACL::$model_rule_tablename)->set($fields)->create();
   }
@@ -194,36 +194,36 @@ abstract class AACL_Core
 	 * @param 	bool		[optional] Force reload from DB default FALSE
 	 * @return 	array
 	 */
-	protected static function _get_rules( $user = false, $force_load = FALSE)
+	protected function _get_rules( $user = false, $force_load = FALSE)
 	{
-      if ( ! isset(self::$_rules) || $force_load)
+      if ( ! isset($this->_rules) || $force_load)
       {
          $select_query = Jelly::query(AACL::$model_rule_tablename);
          // Get rules for user
          if ($user instanceof AACL::$model_user_classname and $user->loaded())
          {
-            self::$_rules = $select_query->where('role','IN', $user->roles->as_array(NULL, 'id'));
+            $this->_rules = $select_query->where('role','IN', $user->roles->as_array(NULL, 'id'));
          }
          // Get rules for role
          elseif ($user instanceof AACL::$model_role_classname and $user->loaded())
          {
-            self::$_rules = $select_query->where('role','=', $user->id);
+            $this->_rules = $select_query->where('role','=', $user->id);
          }
          // User is guest
          else
          {
-            self::$_rules = $select_query->where('role','=', null);
+            $this->_rules = $select_query->where('role','=', null);
          }
 
-         self::$_rules = $select_query
+         $this->_rules = $select_query
                            ->order_by('LENGTH("resource")', 'ASC')
                            ->execute();
       }
 
-      return self::$_rules;
+      return $this->_rules;
 	}
 
-	protected static $_resources;
+	protected $_resources;
 
 	/**
 	 * Returns a list of all valid resource objects based on the filesstem adn
@@ -233,12 +233,12 @@ abstract class AACL_Core
 	 * 					if TRUE a flat array of just the ids is returned
 	 * @return	array
 	 */
-	public static function list_resources($resource_id = FALSE)
+	public function list_resources($resource_id = FALSE)
 	{
-		if ( ! isset(self::$_resources))
+		if ( ! isset($this->_resources))
 		{
 			// Find all classes in the application and modules
-			$classes = self::_list_classes();
+			$classes = $this->_list_classes();
 
 			// Loop throuch classes and see if they implement AACL_Resource
 			foreach ($classes as $i => $class_name)
@@ -257,7 +257,7 @@ abstract class AACL_Core
 					$resource = $class->getMethod('acl_instance')->invoke($class_name, $class_name);
 
                // Get resource info
-					self::$_resources[$resource->acl_id()] = array(
+					$this->_resources[$resource->acl_id()] = array(
 						'actions' 		=> $resource->acl_actions(),
 						'conditions'	=> $resource->acl_conditions(),
 					);
@@ -270,14 +270,14 @@ abstract class AACL_Core
 
 		if ($resource_id === TRUE)
 		{
-			return array_keys(self::$_resources);
+			return array_keys($this->_resources);
 		}
 		elseif ($resource_id)
 		{
-			return isset(self::$_resources[$resource_id]) ? self::$_resources[$resource_id] : NULL;
+			return isset($this->_resources[$resource_id]) ? $this->_resources[$resource_id] : NULL;
 		}
 
-		return self::$_resources;
+		return $this->_resources;
 	}
 
 
@@ -288,7 +288,7 @@ abstract class AACL_Core
    *
    * @return AACL::$model_role_classname role instance
    */
-  public static function normalise_role($role)
+  public function normalise_role($role)
   {
     if ( ! $role instanceof AACL::$model_role_classname)
     {
@@ -302,7 +302,7 @@ abstract class AACL_Core
    /**
     * FIXED
     */
-	protected static function _list_classes($files = NULL)
+	protected function _list_classes($files = NULL)
 	{
 		if (is_null($files))
 		{
@@ -367,7 +367,7 @@ abstract class AACL_Core
 		{
 			if (is_array($path))
 			{
-				$classes = array_merge($classes, self::_list_classes($path));
+				$classes = array_merge($classes, $this->_list_classes($path));
 			}
 			else
 			{
@@ -396,14 +396,14 @@ abstract class AACL_Core
     * @param string $condition
     * @return bool
     */
-   public static function granted($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
+   public function granted($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
    {
       $role = Jelly::query(AACL::$model_role_tablename)->where('name','=',$role)->limit(1)->execute();
-      $rules = self::_get_rules($role);
+      $rules = $this->_get_rules($role);
 
       foreach( $rules as $rule )
       {
-         if( $rule->allows_access_to($resource,$action)
+         if( $rule->allows_access_to($this, $resource,$action)
                  && $rule->role == $role )
          {
             return true;
@@ -412,19 +412,5 @@ abstract class AACL_Core
 
       return false;
    }
-
-	/**
-	 * Force static access
-	 *
-	 * @return	void
-	 */
-	protected function __construct() {}
-
-	/**
-	 * Force static access
-	 *
-	 * @return	void
-	 */
-	protected function __clone() {}
 
 } // End  AACL_Core
