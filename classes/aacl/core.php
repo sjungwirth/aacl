@@ -158,7 +158,7 @@ abstract class AACL_Core
 
 		foreach ($rules as $rule)
 		{
-			if ($rule->allows_access_to($this, $resource, $action))
+			if ($rule->allows_access_to($user, $resource, $action))
 			{
 				// Access granted, just return
 				return true;
@@ -403,7 +403,7 @@ abstract class AACL_Core
 
       foreach( $rules as $rule )
       {
-         if( $rule->allows_access_to($this, $resource,$action)
+         if( $rule->allows_access_to($user, $resource,$action)
                  && $rule->role == $role )
          {
             return true;

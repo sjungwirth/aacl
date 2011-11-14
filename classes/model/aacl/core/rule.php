@@ -50,12 +50,13 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
 	 * Check if rule matches current request
     * CHANGED: allows_access_to accepts now resource_id
 	 *
-   * @param AACL                  AACL instance
+   * @param AACL::$model_user_classname User to check rule against
 	 * @param string|AACL_Resource	AACL_Resource object or it's id that user requested access to
 	 * @param string        action requested [optional]
+   * @param bool          bypass condition ?
 	 * @return
 	 */
-	public function allows_access_to($aacl, $resource, $action = NULL)
+	public function allows_access_to($actor, $resource, $action = NULL, $bypass_condition = FALSE)
 	{
       if (empty($this->resource))
       {
@@ -77,13 +78,6 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
       else
       {
          // $resource should be valid resource id
-
-         // TODO: here could be some buggy stuff
-         /*if (is_null($action))
-         {
-            // Check to see if Resource whats to define it's own action
-            $action = $resource->acl_actions(TRUE);
-         }*/
 
          // Get string id
          $resource_id = $resource;
@@ -126,11 +120,54 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
          }
       }
 
-      // Now we know this rule matches the resource, check any match condition
-      if ( ! empty($this->condition)
-           and ! $resource->acl_conditions($aacl->get_loggedin_user(), $this->condition))
+      if (is_string($resource))
       {
+        $class_name = $resource;
+       $class_name = preg_replace('/^m:/', 'Model_', $class_name);
+       $class_name = preg_replace('/^c:/', 'Controller_', $class_name);
 
+       $class = new ReflectionClass($class_name);
+
+       if ( ! $class->implementsInterface('AACL_Resource'))
+       {
+         throw new AACL_Exception(
+          'Can\'t check access: class :classname does not implement interface AACL_Resource',
+          array(':classname' => $class_name)
+         );
+       }
+
+       if ($class->isInterface())
+       {
+         throw new AACL_Exception(
+          'Can\'t check access: class :classname is an interface',
+          array(':classname' => $class_name)
+         );
+       }
+
+       if ($class->isAbstract())
+       {
+         throw new AACL_Exception(
+          'Can\'t check access: class :classname is abstract',
+          array(':classname' => $class_name)
+         );
+       }
+        // Create an instance of the class
+        $resource = $class->getMethod('acl_instance')->invoke($class_name, $class_name);
+
+        $resource_id = $resource->acl_id();
+
+        // TODO: here could be some buggy stuff
+        if (is_null($action))
+         {
+            // Check to see if Resource whats to define it's own action
+            $action = $resource->acl_actions(TRUE);
+         }
+      }
+      // Now we know this rule matches the resource, check any match condition
+      if ( ! $bypass_condition
+           and ! empty($this->condition)
+           and ! $resource->acl_conditions($actor, $this->condition))
+      {
          // Condition wasn't met (or doesn't exist)
          return FALSE;
       }
