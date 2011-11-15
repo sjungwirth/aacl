@@ -202,24 +202,29 @@ abstract class AACL_Core
          // Get rules for user
          if ($user instanceof AACL::$model_user_classname and $user->loaded())
          {
-            $this->_rules = $select_query->where('role','IN', $user->roles->as_array(NULL, 'id'));
+            $select_query->where('role','IN', $user->roles->as_array(NULL, 'id'));
          }
          // Get rules for role
          elseif ($user instanceof AACL::$model_role_classname and $user->loaded())
          {
-            $this->_rules = $select_query->where('role','=', $user->id);
+            $select_query->where('role','=', $user->id);
          }
          // User is guest
          else
          {
-            $this->_rules = $select_query->where('role','=', null);
+            $select_query->where('role','=', null);
          }
 
-         $this->_rules = $select_query
+         $rules = $select_query
                            ->order_by('LENGTH("resource")', 'ASC')
                            ->execute();
-      }
 
+         $this->_rules = array();
+         foreach ($rules as $rule)
+         {
+           $this->_rules[] = $rule;
+         }
+      }
       return $this->_rules;
 	}
 
