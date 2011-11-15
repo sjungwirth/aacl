@@ -25,7 +25,9 @@ abstract class AACL_Core
 	 *
 	 * @var	array	contains AACL::$model_rule_classname objects
 	 */
-	protected $_rules;
+	protected $_rules_all;
+	protected $_rules_per_resource;
+
 
 	/**
 	 * Returns the currently logged in user
@@ -154,7 +156,7 @@ abstract class AACL_Core
 		$user = $this->get_loggedin_user();
 
       // User is logged in, check rules
-		$rules = $this->_get_rules($user);
+		$rules = $this->_get_rules($user, FALSE, $resource->acl_id());
 
 		foreach ($rules as $rule)
 		{
@@ -194,9 +196,9 @@ abstract class AACL_Core
 	 * @param 	bool		[optional] Force reload from DB default FALSE
 	 * @return 	array
 	 */
-	protected function _get_rules( $user = false, $force_load = FALSE)
+	protected function _get_rules( $user = false, $force_load = FALSE, $resourceid = NULL)
 	{
-      if ( ! isset($this->_rules) || $force_load)
+      if ( ! isset($this->_rules_all) || $force_load)
       {
          $select_query = Jelly::query(AACL::$model_rule_tablename);
          // Get rules for user
@@ -219,14 +221,51 @@ abstract class AACL_Core
                            ->order_by('LENGTH("resource")', 'ASC')
                            ->execute();
 
-         $this->_rules = array();
+         $this->_rules_all          = array();
+         $this->_rules_per_resource = array();
          foreach ($rules as $rule)
          {
-           $this->_rules[] = $rule;
+           $this->_rules_all[] = $rule;
+
+           $resource_base = $this->_get_base_resourceid($rule->resource);
+
+           if ( ! isset($this->_rules_per_resource[$resource_base]))
+           {
+             $this->_rules_per_resource[$resource_base] = array();
+           }
+           $this->_rules_per_resource[$resource_base][] = $rule;
          }
       }
-      return $this->_rules;
+
+      if (is_null($resourceid))
+        return $this->_rules_all;
+
+      $base_resourceid = $this->_get_base_resourceid($resourceid);
+      if (array_key_exists($base_resourceid, $this->_rules_per_resource))
+        return $this->_rules_per_resource[$base_resourceid];
+
+
+      return $this->_rules_per_resource['global'];
 	}
+
+
+  /**
+   * Get the base resourceid of a given resourceid
+   *
+   * @param string $resource full resource id
+   *
+   * @return string base resource id
+   */
+  protected function _get_base_resourceid($resource)
+  {
+    $base_resourceid = preg_replace('/\.\d+/', '', $resource);
+
+    if (empty($base_resourceid))
+      return 'global';
+
+    return $base_resourceid;
+  }
+
 
 	protected $_resources;
 
