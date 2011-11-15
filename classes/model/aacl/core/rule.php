@@ -64,23 +64,11 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
          return TRUE;
       }
 
-      if( $resource instanceof AACL_Resource)
+      if ($resource instanceof AACL_Resource
+          and is_null($action))
       {
-         if (is_null($action))
-         {
-            // Check to see if Resource whats to define it's own action
-            $action = $resource->acl_actions(TRUE);
-         }
-
-         // Get string id
-         $resource_id = $resource->acl_id();
-      }
-      else
-      {
-         // $resource should be valid resource id
-
-         // Get string id
-         $resource_id = $resource;
+         // Check to see if Resource whats to define it's own action
+         $action = $resource->acl_actions(TRUE);
       }
 
       // Make sure action matches
@@ -89,6 +77,10 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
          // This rule has a specific action and it doesn't match the specific one passed
          return FALSE;
       }
+
+      $resource_id = (($resource instanceof AACL_Resource)
+                     ?($resource->acl_id())
+                     :$resource);
 
       $matches = FALSE;
 
