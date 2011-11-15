@@ -13,13 +13,21 @@
  */
 abstract class Jelly_AACL_Core extends Jelly_Model implements AACL_Resource
 {
+	protected $_acl_id = '';
+
+
 	/**
 	 * AACL_Resource::acl_id() implementation
+	 *
+	 * Note: keeps a cache of the acl_id and returns it if the model hasn't changed
 	 *
 	 * @return	string
 	 */
 	public function acl_id()
 	{
+		if ( ! empty($this->_acl_id) and ! $this->changed())
+			return $this->_acl_id;
+
       // Create unique id from primary key if it is set
 		if (is_array($this->meta()->primary_key()))
 		{
@@ -41,7 +49,8 @@ abstract class Jelly_AACL_Core extends Jelly_Model implements AACL_Resource
 		}
 
 		// Model namespace, model name, pk
-		return 'm:'.strtolower($this->meta()->model()).$id;
+		$this->_acl_id = 'm:'.strtolower($this->meta()->model()).$id;
+		return $this->_acl_id;
 	}
 
 	/**
