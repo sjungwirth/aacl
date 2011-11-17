@@ -244,8 +244,10 @@ abstract class AACL_Core
       if (array_key_exists($base_resourceid, $this->_rules_per_resource))
         return $this->_rules_per_resource[$base_resourceid];
 
+      if (array_key_exists('global', $this->_rules_per_resource))
+        return $this->_rules_per_resource['global'];
 
-      return $this->_rules_per_resource['global'];
+      return array();
 	}
 
 
