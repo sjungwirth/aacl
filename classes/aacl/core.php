@@ -189,76 +189,211 @@ abstract class AACL_Core
 
 
 	/**
-	 * Get all rules that apply to user
-    * CHANGED
+	 * Get a list of all rules matching criteria
+   *
+	 * @param AACL::$model_user_classname|AACL::$model_role_classname|NULL $user         user, role or everyone (NULL)
+	 * @param bool                                                         $force_reload force reload from DB default FALSE
+   * @param string|NULL                                                  $resourceid   full resource ID criterion (NULL matches all resource IDs)
 	 *
-	 * @param 	AACL::$model_user_classname|AACL::$model_role_classname|bool 	User, role or everyone
-	 * @param 	bool		[optional] Force reload from DB default FALSE
-	 * @return 	array
+   * @return array list of matching rules
 	 */
-	protected function _get_rules( $user = false, $force_load = FALSE, $resourceid = NULL)
+	protected function _get_rules($user = NULL, $force_reload = FALSE, $resourceid = NULL)
 	{
-      if ( ! isset($this->_rules_all) || $force_load)
+    if ($force_reload)
+    {
+      $this->clear_cache();
+    }
+
+    if ( ! $this->_are_rules_cached($user, $resourceid))
+    {
+      if ($user instanceof AACL::$model_user_classname and $user->loaded())
       {
-         $select_query = Jelly::query(AACL::$model_rule_tablename);
-         // Get rules for user
-         if ($user instanceof AACL::$model_user_classname and $user->loaded())
-         {
-            $select_query->where('role','IN', $user->roles->as_array(NULL, 'id'));
-         }
-         // Get rules for role
-         elseif ($user instanceof AACL::$model_role_classname and $user->loaded())
-         {
-            $select_query->where('role','=', $user->id);
-         }
-         // User is guest
-         else
-         {
-            $select_query->where('role','=', null);
-         }
-
-         $rules = $select_query
-                           ->order_by('LENGTH("resource")', 'ASC')
-                           ->execute();
-
-         $this->_rules_all          = array();
-         $this->_rules_per_resource = array();
-         foreach ($rules as $rule)
-         {
-           $this->_rules_all[] = $rule;
-
-           $resource_base = $this->_get_base_resourceid($rule->resource);
-
-           if ( ! isset($this->_rules_per_resource[$resource_base]))
-           {
-             $this->_rules_per_resource[$resource_base] = array();
-           }
-           $this->_rules_per_resource[$resource_base][] = $rule;
-         }
+        foreach ($user->roles as $role)
+        {
+          $this->_fetch_rules($role->id, $resourceid);
+        }
       }
+      elseif ($user instanceof AACL::$model_role_classname and $user->loaded())
+      {
+        $this->_fetch_rules($role->id, $resourceid);
+      }
+      else
+      {
+        $this->_fetch_rules(0, $resourceid);
+      }
+    }
 
-      if (is_null($resourceid))
-        return $this->_rules_all;
-
-      $base_resourceid = $this->_get_base_resourceid($resourceid);
-      if (array_key_exists($base_resourceid, $this->_rules_per_resource))
-        return $this->_rules_per_resource[$base_resourceid];
-
-      if (array_key_exists('global', $this->_rules_per_resource))
-        return $this->_rules_per_resource['global'];
-
-      return array();
-	}
+    return $this->_cached_rules($user, $resourceid);
+  }
 
 
   /**
-   * Get the base resourceid of a given resourceid
+   *
+   * @param AACL::$model_user_classname|AACL::$model_role_classname|NULL $user         user, role or noone (NULL)
+	 * @param bool                                                         $force_reload force reload from DB default FALSE
+   * @param string|NULL                                                  $resourceid   full resource ID criterion (NULL matches all resource IDs)
+	 *
+   * return bool are matching rules cached ?
+   */
+  protected function _are_rules_cached($user = NULL, $resourceid = NULL)
+  {
+    $resource_key = $this->_get_resource_key($resourceid);
+
+    $cached = TRUE;
+    if ($user instanceof AACL::$model_user_classname and $user->loaded())
+    {
+      foreach ($user->roles as $role)
+      {
+        $role_key = $this->_get_role_key($role->id);
+        if ( ! isset($this->_rules[$role_key])
+            or ! isset($this->_rules[$role_key][$resource_key]))
+        {
+          $cached = FALSE;
+        }
+      }
+    }
+    elseif ($user instanceof AACL::$model_role_classname and $user->loaded())
+    {
+      $role_key = $this->_get_role_key($user->id);
+      if ( ! isset($this->_rules[$role_key])
+          or ! isset($this->_rules[$role_key][$resource_key]))
+      {
+        $cached = FALSE;
+      }
+    }
+    else
+    {
+      // Force reload as it's impossible to know if all rules are already in the cache
+      $cached = FALSE;
+    }
+
+    return $cached;
+  }
+
+
+  /**
+   * Fetch rules matching criteria and cache them
+   *
+   * @param int    $roleid     ID of the role criterion (zero matches no role)
+   * @param string $resourceid full resource ID criterion (NULL matches all resource IDs)
+   *
+   * @return null
+   */
+  protected function _fetch_rules($roleid = 0, $resourceid = NULL)
+  {
+    $query = Jelly::query(AACL::$model_rule_tablename);
+
+    if ($roleid == 0)
+    {
+      $query->where('role','=', NULL);
+    }
+    else
+    {
+      $query->where('role','=', $roleid);
+    }
+
+    if ( ! is_null($resourceid))
+    {
+      $query->and_where_open()
+            ->where('resource','=', '')
+            ->or_where('resource','LIKE', $this->_get_resource_key($resourceid).'%')
+            ->and_where_close();
+    }
+
+    $query->order_by('LENGTH("resource")', 'ASC');
+
+    $rules = $query->execute();
+
+    foreach ($rules as $rule)
+    {
+      $role_key     = $this->_get_role_key($roleid);
+      $resource_key = $this->_get_resource_key($rule->resource);
+
+      if ( ! isset($this->_rules[$role_key]))
+      {
+        $this->_rules[$role_key] = array();
+      }
+
+      if ( ! isset($this->_rules[$role_key][$resource_key]))
+      {
+        $this->_rules[$role_key][$resource_key] = array();
+      }
+
+      $this->_rules[$role_key][$resource_key][] = $rule;
+    }
+  }
+
+
+  /**
+   * Add rules matching criteria to the given list
+   *
+   * @param array  &$rules       list of rules to add matching rules to
+   * @param string $role_key     key of the role in inner cache
+   * @param string $resource_key key of the resource in inner cache
+   *
+   * @return null
+   */
+  protected function _add_rules_to_list(array & $rules, $role_key, $resource_key)
+  {
+    if (isset($this->_rules[$role_key])
+        and isset($this->_rules[$role_key][$resource_key]))
+    {
+      foreach ($this->_rules[$role_key][$resource_key] as $rule)
+      {
+        $rules[] = $rule;
+      }
+    }
+  }
+
+  /**
+   * List of cached rules matching criteria
+   *
+   * @param AACL::$model_user_classname|AACL::$model_role_classname|NULL $user       user, role or noone (NULL)
+   * @param string                                                       $resourceid full resource ID criterion (NULL matches all resource IDs)
+   *
+   * @return array list of matching rules (more general first)
+   */
+  protected function _cached_rules($user = NULL, $resourceid = NULL)
+  {
+    $resource_key = $this->_get_resource_key($resourceid);
+
+    $rules = array();
+
+    $this->_add_rules_to_list($rules, 'global', 'global');
+    $this->_add_rules_to_list($rules, 'global', $resource_key);
+
+    if ($user instanceof AACL::$model_user_classname and $user->loaded())
+    {
+      foreach ($user->roles as $role)
+      {
+        $role_key = $this->_get_role_key($role->id);
+        $this->_add_rules_to_list($rules, $role_key, 'global');
+        $this->_add_rules_to_list($rules, $role_key, $resource_key);
+      }
+    }
+    elseif ($user instanceof AACL::$model_role_classname and $user->loaded())
+    {
+      $role_key = $this->_get_role_key($user->id);
+      $this->_add_rules_to_list($rules, $role_key, 'global');
+      $this->_add_rules_to_list($rules, $role_key, $resource_key);
+    }
+    else
+    {
+      // Noone means no rules
+    }
+
+    return $rules;
+  }
+
+
+  /**
+   * Get the inner cache resource key of a given resource
    *
    * @param string $resource full resource id
    *
-   * @return string base resource id
+   * @return string resource key
    */
-  protected function _get_base_resourceid($resource)
+  protected function _get_resource_key($resource)
   {
     $base_resourceid = preg_replace('/\.\d+/', '', $resource);
 
@@ -266,6 +401,22 @@ abstract class AACL_Core
       return 'global';
 
     return $base_resourceid;
+  }
+
+
+  /**
+   * Get the inner cache role key of a given role ID
+   *
+   * @param int $roleid ID of a role
+   *
+   * @return string role key
+   */
+  protected function _get_role_key($roleid)
+  {
+    if ($roleid == 0)
+      return 'global';
+
+    return (string) $roleid;
   }
 
 
