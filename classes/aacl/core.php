@@ -272,10 +272,21 @@ abstract class AACL_Core
 
 
   /**
+   * Fetch all rules from database and cache them
+   *
+   * @return null
+   */
+  public function cache_all_rules()
+  {
+    $this->_fetch_rules(NULL, NULL);
+  }
+
+
+  /**
    * Fetch rules matching criteria and cache them
    *
-   * @param int    $roleid     ID of the role criterion (zero matches no role)
-   * @param string $resourceid full resource ID criterion (NULL matches all resource IDs)
+   * @param int|NULL $roleid     ID of the role criterion (zero matches no role, NULL matches all roles)
+   * @param string   $resourceid full resource ID criterion (NULL matches all resource IDs)
    *
    * @return null
    */
@@ -283,11 +294,11 @@ abstract class AACL_Core
   {
     $query = Jelly::query(AACL::$model_rule_tablename);
 
-    if ($roleid == 0)
+    if ($roleid === 0)
     {
       $query->where('role','=', NULL);
     }
-    else
+    elseif ($roleid > 0)
     {
       $query->where('role','=', $roleid);
     }
@@ -306,7 +317,7 @@ abstract class AACL_Core
 
     foreach ($rules as $rule)
     {
-      $role_key     = $this->_get_role_key($roleid);
+      $role_key     = $this->_get_role_key($rule->role->id);
       $resource_key = $this->_get_resource_key($rule->resource);
 
       if ( ! isset($this->_rules[$role_key]))
