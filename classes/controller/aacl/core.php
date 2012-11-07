@@ -21,7 +21,7 @@ abstract class Controller_AACL_Core extends Controller_Template implements AACL_
 	public function acl_id()
 	{
 		// Controller namespace, controller name
-		return 'c:'.strtolower($this->request->controller);
+		return 'c:'.strtolower($this->request->controller());
 	}
 
 	/**
@@ -34,7 +34,7 @@ abstract class Controller_AACL_Core extends Controller_Template implements AACL_
 	{
 		if ($return_current)
 		{
-			return $this->request->action;
+			return $this->request->action();
 		}
 
 		// Find all actions in this class
@@ -54,56 +54,57 @@ abstract class Controller_AACL_Core extends Controller_Template implements AACL_
 		return $actions;
 	}
 
-	/**
-	 * AACL_Resource::acl_conditions() implementation
-	 *
-	 * @param	AACL::$model_user_classname 	$user [optional] logged in user model
-	 * @param	object    	$condition [optional] condition to test
-	 * @return	mixed
-	 */
+    /**
+     * AACL_Resource::acl_conditions() implementation
+     *
+     * @param    Model_User     $user [optional] logged in user model
+     * @param    string        $condition [optional] condition to test
+     * @throws   AACL_Exception
+     * @return   mixed
+     */
 	public function acl_conditions($user = NULL, $condition = NULL)
 	{
-		if ( ! $user instanceof AACL::$model_user_classname)
-		{
-			throw new AACL_Exception(
-				'Argument #1 of controller :controllername should be of type :expectedtype: '.
-				':giventype was given',
-				array(
-				  ':controllername' => $this->request->controller(),
-				  ':expectedtype'   => AACL::$model_user_classname,
-				  ':giventype'      => get_class($user),
-				)
-			);
-		}
+        if (is_null($user) AND is_null($condition))
+        {
+            // We have no conditions
+            return array();
+        }
+        else
+        {
+            if ( ! $user instanceof Model_User)
+            {
+                throw new AACL_Exception(
+                    'Argument #1 of controller :controllername should be of type :expectedtype: '.
+                        ':giventype was given',
+                    array(
+                        ':controllername' => $this->request->controller(),
+                        ':expectedtype'   => 'Model_User',
+                        ':giventype'      => get_class($user),
+                    )
+                );
+            }
+        }
 
-		if (is_null($user) AND is_null($condition))
-		{
-			// We have no conditions
-			return array();
-		}
-		else
-		{
-			// We have no conditions so this test should fail!
-			return FALSE;
-		}
-	}
+        // We have no conditions so this test should fail!
+        return FALSE;
+    }
 
 	/**
 	 * AACL_Resource::acl_instance() implementation
 	 *
 	 * Note that the object instance returned should not be used for anything except querying the acl_* methods
 	 *
-	 * @param	string	Class name of object required
+	 * @param	string $class_name Class name of object required
 	 * @return	Object
 	 */
 	public static function acl_instance($class_name)
 	{
 		// Return controller instance populated with manipulated request details
-		$instance = new $class_name(Request::instance());
+		$instance = new $class_name(Request::current());
 		// Remove "controller_" part from name
 		$controller_name = strtolower(substr($class_name, 11));
 
-		if ($controller_name !== Request::instance()->controller)
+		if ($controller_name !== Request::current()->controller())
 		{
 			// Manually override controller name and action
 			$instance->request->controller = strtolower($controller_name);

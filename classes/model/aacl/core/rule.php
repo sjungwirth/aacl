@@ -6,158 +6,172 @@
  * @see			http://github.com/banks/aacl
  * @package		AACL
  * @uses		Auth
- * @uses		Jelly
+ * @uses		ORM
  * @author		Paul Banks
  * @copyright	(c) Paul Banks 2010
  * @license		MIT
  */
-abstract class Model_AACL_Core_Rule extends Jelly_AACL
+abstract class Model_AACL_Core_Rule extends ORM_AACL
 {
-	public static function initialize(Jelly_Meta $meta)
-	{
-		$meta->table(AACL::$model_rule_tablename)
-           ->fields(array(
-              'id' => new Jelly_Field_Primary(array(
-                 'editable' => false,
-              )),
-              'role' => new Jelly_Field_BelongsTo(array(
-                 'label'   => 'Role',
-                 'column'  => 'role_id',
-                 'foreign' => AACL::$model_role_tablename.'.id',
-              )),
-              'resource' => new Jelly_Field_String(array(
-                 'label' => 'Controlled resource',
-                 'rules' => array(
-                     array('max_length', array(':value', 45)),
-                 ),
-              )),
-              'action' => new Jelly_Field_String(array(
-                 'label' => 'Controlled action',
-                 'rules' => array(
-                     array('max_length', array(':value', 45)),
-                 ),
-              )),
-              'condition' => new Jelly_Field_String(array(
-                 'label' => 'Access condition',
-                 'rules' => array(
-                     array('max_length', array(':value', 45)),
-                 ),
-              )),
-            ));
-	}
+    protected $_table_name = 'modsuite_acl';
+
+    protected $_primary_key = 'id';
+
+    protected $_table_columns = array(
+        'id' => array('data_type' => 'int', 'is_nullable' => FALSE),
+        'role_id' => array('data_type' => 'int', 'is_nullable' => TRUE),
+        'resource' => array('data_type' => 'varchar', 'is_nullable' => FALSE),
+        'action' => array('data_type' => 'varchar', 'is_nullable' => FALSE),
+        'condition' => array('data_type' => 'varchar', 'is_nullable' => FALSE),
+    );
+
+    protected $_belongs_to = array(
+        'modsuite_role' => array(
+            'model'       => 'Model_Role',
+            'foreign_key' => 'role_id',
+        ),
+    );
+
+    // TODO: validation
 
 	/**
 	 * Check if rule matches current request
-    * CHANGED: allows_access_to accepts now resource_id
+     * CHANGED: allows_access_to accepts now resource_id
 	 *
-   * @param AACL                  AACL instance
-	 * @param string|AACL_Resource	AACL_Resource object or it's id that user requested access to
-	 * @param string        action requested [optional]
+     * @param AACL $aacl AACL instance
+	 * @param string|AACL_Resource $resource AACL_Resource object or it's id that user requested access to
+	 * @param string $action action requested [optional]
 	 * @return
 	 */
 	public function allows_access_to($aacl, $resource, $action = NULL)
 	{
-      if (empty($this->resource))
-      {
-         // No point checking anything else!
-         return TRUE;
-      }
+        if (empty($this->resource))
+        {
+            // No point checking anything else!
+            return TRUE;
+        }
 
-      if( $resource instanceof AACL_Resource)
-      {
-         if (is_null($action))
-         {
-            // Check to see if Resource whats to define it's own action
-            $action = $resource->acl_actions(TRUE);
-         }
+        if (is_string($resource))
+        {
+            $class_name = $resource;
+            $class_name = preg_replace('/^m:/', 'Model_', $class_name);
+            $class_name = preg_replace('/^c:/', 'Controller_', $class_name);
 
-         // Get string id
-         $resource_id = $resource->acl_id();
-      }
-      else
-      {
-         // $resource should be valid resource id
+            $class = new ReflectionClass($class_name);
 
-         // TODO: here could be some buggy stuff
-         /*if (is_null($action))
-         {
-            // Check to see if Resource whats to define it's own action
-            $action = $resource->acl_actions(TRUE);
-         }*/
-
-         // Get string id
-         $resource_id = $resource;
-      }
-
-      // Make sure action matches
-      if ( ! is_null($action) AND ! empty($this->action) AND $action !== $this->action)
-      {
-         // This rule has a specific action and it doesn't match the specific one passed
-         return FALSE;
-      }
-
-      $matches = FALSE;
-
-      // Make sure rule resource is the same as requested resource, or is an ancestor
-      while( ! $matches)
-      {
-         // Attempt match
-         if ($this->resource === $resource_id)
-         {
-            // Stop loop
-            $matches = TRUE;
-         }
-         else
-         {
-            // Find last occurence of '.' separator
-            $last_dot_pos = strrpos($resource_id, '.');
-
-            if ($last_dot_pos !== FALSE)
+            if ( ! $class->implementsInterface('AACL_Resource'))
             {
-               // This rule might match more generally, try the next level of specificity
-               $resource_id = substr($resource_id, 0, $last_dot_pos);
+                throw new AACL_Exception(
+                    'Can\'t check access: class :classname does not implement interface AACL_Resource',
+                    array(':classname' => $class_name)
+                );
+            }
+
+            if ($class->isInterface())
+            {
+                throw new AACL_Exception(
+                    'Can\'t check access: class :classname is an interface',
+                    array(':classname' => $class_name)
+                );
+            }
+
+            if ($class->isAbstract())
+            {
+                throw new AACL_Exception(
+                    'Can\'t check access: class :classname is abstract',
+                    array(':classname' => $class_name)
+                );
+            }
+            // Create an instance of the class
+            $resource = $class->getMethod('acl_instance')->invoke($class_name, $class_name);
+        }
+
+        if ( ! ($resource instanceof AACL_Resource))
+        {
+            $type = (is_object($resource) ? get_class($resource) : gettype($resource));
+
+            throw new AACL_Exception(
+                'Can\'t check access: resource :type does not implement interface AACL_Resource',
+                array(':type' => $type)
+            );
+        }
+
+        if (is_null($action))
+        {
+            // Check to see if Resource wants to define it's own action
+            $action = $resource->acl_actions(TRUE);
+        }
+
+        // Make sure action matches
+        if ( ! is_null($action) AND ! empty($this->action) AND $action !== $this->action)
+        {
+            // This rule has a specific action and it doesn't match the specific one passed
+            return FALSE;
+        }
+
+        $resource_id = $resource->acl_id();
+
+        $matches = FALSE;
+
+        // Make sure rule resource is the same as requested resource, or is an ancestor
+        while( ! $matches)
+        {
+            // Attempt match
+            if ($this->resource === $resource_id)
+            {
+                // Stop loop
+                $matches = TRUE;
             }
             else
             {
-               // We can't make this any more general as there are no more dots
-               // And we haven't managed to match the resource requested
-               return FALSE;
+                // Find last occurence of '.' separator
+                $last_dot_pos = strrpos($resource_id, '.');
+
+                if ($last_dot_pos !== FALSE)
+                {
+                    // This rule might match more generally, try the next level of specificity
+                    $resource_id = substr($resource_id, 0, $last_dot_pos);
+                }
+                else
+                {
+                    // We can't make this any more general as there are no more dots
+                    // And we haven't managed to match the resource requested
+                    return FALSE;
+                }
             }
-         }
-      }
+        }
 
-      // Now we know this rule matches the resource, check any match condition
-      if ( ! empty($this->condition)
-           and ! $resource->acl_conditions($aacl->get_loggedin_user(), $this->condition))
-      {
+        // Now we know this rule matches the resource, check any match condition
+        if ( ! empty($this->condition)
+            and ! $resource->acl_conditions($aacl->get_loggedin_user(), $this->condition))
+        {
 
-         // Condition wasn't met (or doesn't exist)
-         return FALSE;
-      }
+            // Condition wasn't met (or doesn't exist)
+            return FALSE;
+        }
 
-      // All looks rosy!
-      return TRUE;
+        // All looks rosy!
+        return TRUE;
 	}
 
-	/**
-	 * Override create to remove less specific rules when creating a rule
-	 *
-	 * @return $this
-	 */
-	public function create()
+    /**
+     * Override create to remove less specific rules when creating a rule
+     *
+     * @param Validation $validation
+     * @return $this
+     */
+	public function create(Validation $validation = NULL)
 	{
-      $meta = $this->meta();
-      $fields = $meta->fields();
-		// Delete all more specifc rules for this role
-    $delete = $this->_get_base_query();
-    if (isset($this->_changed['role']))
-    {
-      $delete->where($fields['role']->column, '=', $this->_changed['role']);
-    }
-    else
-    {
-      $delete->where($fields['role']->column, '=', NULL);
-    }
+		// Delete all more specific rules for this role
+        $delete = DB::delete($this->_table_name);
+        if (isset($this->_changed['role']))
+        {
+            $delete->where('role_id', '=', $this->_changed['role']);
+        }
+        else
+        {
+            $delete->where('role_id', 'IS', NULL);
+        }
 
 		// If resource is NULL we don't need any more rules - we just delete every rule for this role
 		if ( ! is_null($this->resource) )
@@ -182,13 +196,10 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
 		}
 
 		// Do the delete
-		foreach ($delete->execute() as $rule)
-		{
-				$rule->delete();
-		}
+		$delete->execute();
 
 		// Create new rule
-		parent::save();
+		return parent::create($validation);
 	}
 
 	/**
@@ -207,18 +218,6 @@ abstract class Model_AACL_Core_Rule extends Jelly_AACL
 
 		// Return default model actions
 		return array('grant', 'revoke');
-	}
-
-
-	/**
-	 * Returns a Jelly query to search for AACL rules
-	 *
-	 * @return Jelly_Query
-	 */
-	protected function _get_base_query()
-	{
-		$query = new Jelly_Request;
-		return $query->query(AACL::$model_rule_tablename);
 	}
 
 } // End Model_AACL_Core_Rule

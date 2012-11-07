@@ -6,31 +6,30 @@
  * @see			http://github.com/banks/aacl
  * @package		AACL
  * @uses		Auth
- * @uses		Jelly
+ * @uses		ORM
  * @author		Paul Banks
  * @copyright	(c) Paul Banks 2010
  * @license		MIT
  */
 abstract class AACL_Core
 {
-	public static $model_role_classname = 'Model_Role';
-	public static $model_role_tablename = 'role';
-	public static $model_rule_classname = 'Model_AACL_Rule';
-	public static $model_rule_tablename = 'aacl_rule';
-	public static $model_user_classname = 'Model_User';
-
-
 	/**
 	 * All rules that apply to the currently logged in user
 	 *
-	 * @var	array	contains AACL::$model_rule_classname objects
+	 * @var	array	contains Model_AACL_Rule objects
 	 */
 	protected $_rules;
 
-	/**
+    /**
+     * @var array
+     */
+    protected $_resources;
+
+    /**
 	 * Returns the currently logged in user
 	 *
-	 * @return AACL::$model_user_classname|NULL logged in user's instance or NULL pointer
+	 * @return Model_User logged in user's instance or NULL pointer
+     * @return NULL
 	 */
 	public function get_loggedin_user()
 	{
@@ -38,15 +37,16 @@ abstract class AACL_Core
 	}
 
 
-	/**
-	 * Grant access to $role for resource
-	 *
-	 * @param	string|Model_Role	string role name or Model_Role object [optional]
-	 * @param	string	resource identifier [optional]
-	 * @param	string	action [optional]
-	 * @param	string	condition [optional]
-	 * @return 	void
-	 */
+    /**
+     * Grant access to $role for resource
+     *
+     * @param string|Model_Role    $role string role name or Model_Role object [optional]
+     * @param string $resource resource identifier [optional]
+     * @param string $action action [optional]
+     * @param string $condition condition [optional]
+     * @throws AACL_Exception
+     * @return void
+     */
 	public function grant($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
 	{
       // if $role is null — we grant this to everyone
@@ -89,87 +89,95 @@ abstract class AACL_Core
 	 * Revoke access to $role for resource
     * CHANGED: now accepts NULL role
 	 *
-	 * @param	string|Model_Role role name or Model_Role object [optional]
-	 * @param	string	resource identifier [optional]
-	 * @param	string	action [optional]
-	 * @param	string	condition [optional]
+	 * @param	string|Model_Role $role role name or Model_Role object [optional]
+	 * @param	string $resource resource identifier [optional]
+	 * @param	string $action action [optional]
+	 * @param	string $condition condition [optional]
 	 * @return 	void
 	 */
 	public function revoke($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
-	{
-      if( is_null($role) )
-      {
-         $model = Jelly::factory(AACL::$model_rule_tablename, array(
-            'role' => NULL,
-         ));
-      }
-      else
-      {
-         // Normalise $role
-         $role = $this->normalise_role($role);
+    {
+        $model = ORM::factory('AACL_Rule');
 
-         // Check role exists
-         if ( ! $role->loaded())
-         {
-            // Just return without deleting anything
-            return;
-         }
+        if( is_null($role))
+        {
+            $model->where('role', 'IS', NULL);
+        }
+        else
+        {
+            // Normalise $role
+            $role = $this->normalise_role($role);
 
-         $model = Jelly::factory(AACL::$model_rule_tablename, array(
-            'role' => $role->id,
-         ));
-      }
+            // Check role exists
+            if ( ! $role->loaded())
+            {
+                // Just return without deleting anything
+                return;
+            }
 
-      if ( ! is_null($resource) )
-      {
-         // Add normal resources, resource NULL will delete all rules
-         $model->resource = $resource;
-      }
+            $model->where('role', '=', $role->id);
+        }
 
-      if ( ! is_null($resource) && ! is_null($action))
-      {
-         $model->action = $action;
-      }
+        if ( ! is_null($resource) )
+        {
+            // Add normal resources, resource NULL will delete all rules
+            $model->and_where('resource', '=', $resource);
 
-      if ( ! is_null($resource) && ! is_null($condition))
-      {
-         $model->condition = $condition;
-      }
+            if (! is_null($action))
+            {
+                $model->and_where('action', '=', $action);
+            }
 
-      // Delete rule
-      $model->delete();
+            if ( ! is_null($condition))
+            {
+                $model->and_where('condition', '=', $condition);
+            }
+        }
+
+        $model->find();
+
+        // Delete rule
+        if ($model->loaded())
+        {
+            $model->delete();
+        }
 	}
 
-   /**
-	 * Checks user has permission to access resource
-    * CHANGED: now works with unauthorized users
-	 *
-	 * @param	AACL_Resource	AACL_Resource object being requested
-	 * @param	string			action identifier [optional]
-	 * @throw	AACL_Exception	To identify permission or authentication failure
-	 * @return	void
-	 */
-	public function check(AACL_Resource $resource, $action = NULL)
+    /**
+     * Checks user has permission to access resource
+     * CHANGED: now works with unauthorized users
+     *
+     * @param    AACL_Resource $resource AACL_Resource object being requested
+     * @param    string $action action identifier [optional]
+     * @throws   AACL_Exception To identify permission or authentication failure
+     * @return   void
+     */
+    public function check(AACL_Resource $resource, $action = NULL)
 	{
-		$user = $this->get_loggedin_user();
+        $user = $this->get_loggedin_user();
 
-      // User is logged in, check rules
-		$rules = $this->_get_rules($user);
+        // User is logged in, check rules
+        $rules = $this->_get_rules($user);
 
+        /**
+         * @var Model_AACL_Rule $rule
+         */
 		foreach ($rules as $rule)
 		{
-			if ($rule->allows_access_to($this, $resource, $action))
+            if ($rule->allows_access_to($this, $resource, $action))
 			{
 				// Access granted, just return
-				return true;
+				return;
 			}
 		}
 
-      // No access rule matched
-      if( $user )
-   		throw new AACL_Exception_403;
-		else
+        // No access rule matched
+        if ( $user ) {
+   		    throw new AACL_Exception_403;
+        }
+		else {
 			throw new AACL_Exception_401;
+        }
 	}
 
 
@@ -178,52 +186,51 @@ abstract class AACL_Core
    *
    * @param array $fields optional fields' values
    *
-   * @return NULL
+   * @return void
    */
-  public function create_rule(array $fields = array())
-  {
-    Jelly::factory(AACL::$model_rule_tablename)->set($fields)->create();
-  }
+    public function create_rule(array $fields = array())
+    {
+        ORM::factory('AACL_Rule')->values($fields)->create();
+    }
 
 
 	/**
 	 * Get all rules that apply to user
-    * CHANGED
+     *
+     * CHANGED
 	 *
-	 * @param 	AACL::$model_user_classname|AACL::$model_role_classname|bool 	User, role or everyone
-	 * @param 	bool		[optional] Force reload from DB default FALSE
-	 * @return 	array
+	 * @param mixed $user Model_User|Model_Role|bool User, role or everyone
+	 * @param bool $force_load [optional] Force reload from DB default FALSE
+	 * @return Database_Result
 	 */
-	protected function _get_rules( $user = false, $force_load = FALSE)
+    protected function _get_rules( $user = false, $force_load = FALSE)
 	{
-      if ( ! isset($this->_rules) || $force_load)
-      {
-         $select_query = Jelly::query(AACL::$model_rule_tablename);
-         // Get rules for user
-         if ($user instanceof AACL::$model_user_classname and $user->loaded())
-         {
-            $this->_rules = $select_query->where('role','IN', $user->roles->as_array(NULL, 'id'));
-         }
-         // Get rules for role
-         elseif ($user instanceof AACL::$model_role_classname and $user->loaded())
-         {
-            $this->_rules = $select_query->where('role','=', $user->id);
-         }
-         // User is guest
-         else
-         {
-            $this->_rules = $select_query->where('role','=', null);
-         }
+        if ( ! isset($this->_rules) || $force_load)
+        {
+            $select_query = ORM::factory('AACL_Rule');
+            // Get rules for user
+            if ($user instanceof Model_User and $user->loaded())
+            {
+                $this->_rules = $select_query->where('role', 'IN', $user->roles->as_array(NULL, 'id'));
+            }
+            // Get rules for role
+            elseif ($user instanceof Model_Role and $user->loaded())
+            {
+                $this->_rules = $select_query->where('role', '=', $user->id);
+            }
+            // User is guest
+            else
+            {
+                $this->_rules = $select_query->where('role', '=', null);
+            }
 
-         $this->_rules = $select_query
-                           ->order_by('LENGTH("resource")', 'ASC')
-                           ->execute();
-      }
+            $this->_rules = $select_query
+                ->order_by('LENGTH("resource")', 'ASC')
+                ->find_all()->as_array();
+        }
 
-      return $this->_rules;
-	}
-
-	protected $_resources;
+        return $this->_rules;
+    }
 
 	/**
 	 * Returns a list of all valid resource objects based on the filesstem adn
@@ -240,8 +247,8 @@ abstract class AACL_Core
 			// Find all classes in the application and modules
 			$classes = $this->_list_classes();
 
-			// Loop throuch classes and see if they implement AACL_Resource
-			foreach ($classes as $i => $class_name)
+			// Loop through classes and see if they implement AACL_Resource
+			foreach ($classes as $class_name)
 			{
 				$class = new ReflectionClass($class_name);
 
@@ -256,7 +263,7 @@ abstract class AACL_Core
 					// Create an instance of the class
 					$resource = $class->getMethod('acl_instance')->invoke($class_name, $class_name);
 
-               // Get resource info
+                    // Get resource info
 					$this->_resources[$resource->acl_id()] = array(
 						'actions' 		=> $resource->acl_actions(),
 						'conditions'	=> $resource->acl_conditions(),
@@ -281,22 +288,22 @@ abstract class AACL_Core
 	}
 
 
-  /**
-   * Normalise role
-   *
-   * @param AACL::$model_role_classname|string $role role instance or role identifier
-   *
-   * @return AACL::$model_role_classname role instance
-   */
-  public function normalise_role($role)
-  {
-    if ( ! $role instanceof AACL::$model_role_classname)
+    /**
+    * Normalise role
+    *
+    * @param Model_Role|string $role role instance or role identifier
+    *
+    * @return Model_Role role instance
+    */
+    public function normalise_role($role)
     {
-      return Jelly::query(AACL::$model_role_tablename)->where('name', '=', $role)->limit(1)->execute();
-    }
+        if ( ! $role instanceof Model_Role)
+        {
+            return ORM::factory('Role')->where('name', '=', $role)->find();
+        }
 
-    return $role;
-  }
+        return $role;
+    }
 
 
    /**
@@ -322,26 +329,6 @@ abstract class AACL_Core
                'pagination',
                'migration'
             );
-
-      /*   'firephp' => MODPATH.'firephp',
-        'dbforge' => MODPATH.'dbforge',
-        'database'   => MODPATH.'database',   // Database access
-        'migration' => MODPATH.'migration',
-        'formo'        => MODPATH.'formo',
-        'formo-jelly'        => MODPATH.'formo-jelly',
-        'jelly'        => MODPATH.'jelly',        // Object Relationship Mapping
-        'jelly-auth'        => MODPATH.'jelly-auth',
-        'auth'       => MODPATH.'auth',       // Basic authentication
-        'aacl'       => MODPATH.'aacl',       // Roles, rules, resources
-        // 'oauth'      => MODPATH.'oauth',      // OAuth authentication
-        // 'pagination' => MODPATH.'pagination', // Paging of results
-        'archive' => MODPATH.'archive',
-        'unittest'   => MODPATH.'unittest',   // Unit testing
-        'userguide'  => MODPATH.'userguide',  // User guide and API documentation
-        //'debug-toolbar'        => MODPATH.'debug-toolbar',
-        'notices'        => MODPATH.'notices',
-        //'editor' => MODPATH.'editor',
-        'article' => MODPATH.'article',*/
 
 			$paths = Kohana::include_paths();
 
@@ -396,21 +383,23 @@ abstract class AACL_Core
     * @param string $condition
     * @return bool
     */
-   public function granted($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
-   {
-      $role = Jelly::query(AACL::$model_role_tablename)->where('name','=',$role)->limit(1)->execute();
-      $rules = $this->_get_rules($role);
+    public function granted($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
+    {
+        $role = ORM::factory('Role')->where('name', '=', $role)->find();
+        $rules = $this->_get_rules($role);
 
-      foreach( $rules as $rule )
-      {
-         if( $rule->allows_access_to($this, $resource,$action)
-                 && $rule->role == $role )
-         {
-            return true;
-         }
-      }
+        /**
+         * @var Model_AACL_Rule $rule
+         */
+        foreach( $rules as $rule )
+        {
+            if( $rule->allows_access_to($this, $resource, $action) && $rule->role == $role )
+            {
+                return true;
+            }
+        }
 
-      return false;
-   }
+        return false;
+    }
 
 } // End  AACL_Core

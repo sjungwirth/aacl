@@ -46,9 +46,9 @@ interface AACL_Core_Resource
 	 *
 	 * return array('condition_id' => 'User friendly description of condition');
 	 *
-	 * Objects which implement this interface should check the first parameter if an instance of AACL::$model_user_classname
+	 * Objects which implement this interface should check the first parameter if an instance of Model_User
 	 *
-	 * @param	AACL::$model_user_classname	$user [optional] logged in user model
+	 * @param	Model_User	$user [optional] logged in user model
 	 * @param	object    	$condition [optional] condition to test
 	 * @return	mixed
 	 */

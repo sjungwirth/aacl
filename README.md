@@ -1,14 +1,15 @@
 # AACL
 
 AACL is (yet) Another ACL library for Kohana 3.
-Ported to Jelly ORM 3.1.
+Ported to native Kohana 3.2 ORM.
 
 Based on [banks AACL](http://github.com/banks/aacl#readme)
 and [ckald Jelly port](https://github.com/ckald/aacl-jelly#readme)
+and [emtou Jelly port](https://github.com/emtou/aacl-jelly3#readme)
 
 ### Auth integration: Users and Roles
 
-AACL uses [kohana auth](http://github.com/kohanan/auth) and, optionally, [jelly-auth](http://github.com/raeldc/jelly-auth).
+AACL uses [kohana auth](http://github.com/kohanan/auth).
 
 1.	Users and roles have a many-to-many mapping
 2.	Roles are non-hierarchical and no role is given special treatment
@@ -27,3 +28,5 @@ and released :
 
 -  version 0.1 : last static version
 -  version 0.2 : first non-static version
+
+RuslanGetmansky modified AACL classes to deal with native Kohana 3.2 ORM and removed AACL controller/view for rules.

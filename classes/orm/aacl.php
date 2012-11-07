@@ -6,11 +6,11 @@
  * @see			http://github.com/banks/aacl
  * @package		AACL
  * @uses		Auth
- * @uses		Jelly
+ * @uses		ORM
  * @author		Paul Banks
  * @copyright	(c) Paul Banks 2010
  * @license		MIT
  */
-class Jelly_AACL extends Jelly_AACL_Core
+class ORM_AACL extends ORM_AACL_Core
 {
 }
