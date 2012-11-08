@@ -38,12 +38,12 @@ abstract class Model_AACL_Core_Rule extends ORM_AACL
 	 * Check if rule matches current request
      * CHANGED: allows_access_to accepts now resource_id
 	 *
-     * @param AACL $aacl AACL instance
+     * @param Model_User $user AACL instance
 	 * @param string|AACL_Resource $resource AACL_Resource object or it's id that user requested access to
 	 * @param string $action action requested [optional]
 	 * @return
 	 */
-	public function allows_access_to($aacl, $resource, $action = NULL)
+	public function allows_access_to($user, $resource, $action = NULL)
 	{
         if (empty($this->resource))
         {
@@ -143,7 +143,7 @@ abstract class Model_AACL_Core_Rule extends ORM_AACL
 
         // Now we know this rule matches the resource, check any match condition
         if ( ! empty($this->condition)
-            and ! $resource->acl_conditions($aacl->get_loggedin_user(), $this->condition))
+            and ! $resource->acl_conditions($user, $this->condition))
         {
 
             // Condition wasn't met (or doesn't exist)

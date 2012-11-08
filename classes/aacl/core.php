@@ -13,6 +13,8 @@
  */
 abstract class AACL_Core
 {
+    protected static $_instance = null;
+
 	/**
 	 * All rules that apply to the currently logged in user
 	 *
@@ -24,6 +26,21 @@ abstract class AACL_Core
      * @var array
      */
     protected $_resources;
+
+    /**
+     * Get singleton instance
+     * @return AACL
+     */
+    public static function get_instance() {
+        if (is_null(self::$_instance)) {
+            $class_name = __CLASS__;
+            self::$_instance = new AACL;
+        }
+        return self::$_instance;
+    }
+
+    protected function __construct() {}
+    protected function __clone() {}
 
     /**
 	 * Returns the currently logged in user
@@ -164,7 +181,7 @@ abstract class AACL_Core
          */
 		foreach ($rules as $rule)
 		{
-            if ($rule->allows_access_to($this, $resource, $action))
+            if ($rule->allows_access_to($user, $resource, $action))
 			{
 				// Access granted, just return
 				return;
@@ -317,17 +334,19 @@ abstract class AACL_Core
 			$loaded_modules = Kohana::modules();
 
 			$exclude_modules = array(
-               'database',
-               'orm',
-               'jelly',
-               'auth',
-               'jelly-auth',
-               'userguide',
-               'image',
-               'codebench',
-               'unittest',
-               'pagination',
-               'migration'
+                'database',
+                'orm',
+                'auth',
+                'userguide',
+                'image',
+                'codebench',
+                'unittest',
+                'pagination',
+                'migration',
+                'simpletest',
+                'cache',
+                'acl',
+                'smarty',
             );
 
 			$paths = Kohana::include_paths();
@@ -345,7 +364,7 @@ abstract class AACL_Core
 
 			// Remove system path
 			unset($paths[array_search(SYSPATH, $paths)]);
-			$files = Kohana::list_files('classes', $paths);
+			$files = array_merge(Kohana::list_files('classes'.DIRECTORY_SEPARATOR.'controller', $paths), Kohana::list_files('classes'.DIRECTORY_SEPARATOR.'model', $paths));
 		}
 
 		$classes = array();
@@ -393,7 +412,7 @@ abstract class AACL_Core
          */
         foreach( $rules as $rule )
         {
-            if( $rule->allows_access_to($this, $resource, $action) && $rule->role == $role )
+            if( $rule->allows_access_to($role, $resource, $action) && $rule->role == $role )
             {
                 return true;
             }

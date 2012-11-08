@@ -100,16 +100,16 @@ abstract class Controller_AACL_Core extends Controller_Template implements AACL_
 	public static function acl_instance($class_name)
 	{
 		// Return controller instance populated with manipulated request details
-		$instance = new $class_name(Request::current());
+		$instance = new $class_name(Request::current(), Response::factory());
 		// Remove "controller_" part from name
 		$controller_name = strtolower(substr($class_name, 11));
 
 		if ($controller_name !== Request::current()->controller())
 		{
 			// Manually override controller name and action
-			$instance->request->controller = strtolower($controller_name);
+			$instance->request->controller(strtolower($controller_name));
 
-			$instance->request->action = NULL;
+			$instance->request->action('');
 		}
 
 		return $instance;
