@@ -72,7 +72,7 @@ abstract class AACL_Core
         // Create rule
         $this->create_rule(
           array(
-            'role'      => NULL,
+            'role_id'      => NULL,
             'resource'  => $resource,
             'action'    => $action,
             'condition' => $condition,
@@ -93,7 +93,7 @@ abstract class AACL_Core
          // Create rule
          $this->create_rule(
           array(
-            'role'      => $role,
+            'role_id'      => $role,
             'resource'  => $resource,
             'action'    => $action,
             'condition' => $condition,
@@ -118,7 +118,7 @@ abstract class AACL_Core
 
         if( is_null($role))
         {
-            $model->where('role', 'IS', NULL);
+            $model->where('role_id', 'IS', NULL);
         }
         else
         {
@@ -132,7 +132,7 @@ abstract class AACL_Core
                 return;
             }
 
-            $model->where('role', '=', $role->id);
+            $model->where('role_id', '=', $role->id);
         }
 
         if ( ! is_null($resource) )
@@ -228,17 +228,17 @@ abstract class AACL_Core
             // Get rules for user
             if ($user instanceof Model_User and $user->loaded())
             {
-                $this->_rules = $select_query->where('role', 'IN', $user->roles->as_array(NULL, 'id'));
+                $this->_rules = $select_query->where('role_id', 'IN', $user->roles->find_all()->as_array());
             }
             // Get rules for role
             elseif ($user instanceof Model_Role and $user->loaded())
             {
-                $this->_rules = $select_query->where('role', '=', $user->id);
+                $this->_rules = $select_query->where('role_id', '=', $user->id);
             }
             // User is guest
             else
             {
-                $this->_rules = $select_query->where('role', '=', null);
+                $this->_rules = $select_query->where('role_id', '=', null);
             }
 
             $this->_rules = $select_query
@@ -394,31 +394,21 @@ abstract class AACL_Core
    /**
     * Method, that allows to check any rule from database in any place of project.
     * Works with string presentations of resources, actions, roles and conditions
-    * @todo: support conditions
     *
-    * @param string $role
-    * @param string $resource
+    * @param AACL_Resource $resource
     * @param string $action
-    * @param string $condition
     * @return bool
     */
-    public function granted($role = NULL, $resource = NULL, $action = NULL, $condition = NULL)
+    public function granted(AACL_Resource $resource, $action = NULL)
     {
-        $role = ORM::factory('Role')->where('name', '=', $role)->find();
-        $rules = $this->_get_rules($role);
-
-        /**
-         * @var Model_AACL_Rule $rule
-         */
-        foreach( $rules as $rule )
-        {
-            if( $rule->allows_access_to($role, $resource, $action) && $rule->role == $role )
-            {
-                return true;
-            }
+        try {
+            $this->check($resource, $action);
+        }
+        catch (AACL_Exception $e) {
+            return false;
         }
 
-        return false;
+        return true;
     }
 
 } // End  AACL_Core

@@ -71,7 +71,7 @@ abstract class Controller_AACL_Core extends Controller_Template implements AACL_
         }
         else
         {
-            if ( ! $user instanceof Model_User)
+            if ( ! ($user instanceof Model_User))
             {
                 throw new AACL_Exception(
                     'Argument #1 of controller :controllername should be of type :expectedtype: '.
