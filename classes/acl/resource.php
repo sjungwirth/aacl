@@ -1,25 +1,25 @@
 <?php defined('SYSPATH') or die ('No direct script access.');
 
 /**
- * AACL Resource interface
+ * ACL Resource interface
  *
- * @see			http://github.com/banks/aacl
- * @package		AACL
- * @uses		Auth
- * @uses		Sprig
- * @author		Paul Banks
- * @copyright	(c) Paul Banks 2010
- * @license		MIT
+ * @see            http://github.com/banks/aacl
+ * @package        ACL
+ * @uses        Auth
+ * @uses        Sprig
+ * @author        Paul Banks
+ * @copyright    (c) Paul Banks 2010
+ * @license        MIT
  */
-interface AACL_Core_Resource
-{
+interface ACL_Resource {
+
 	/**
 	 * Gets a unique ID string for this resource
 	 *
-	 * Convention for controllers is 	c:controller_name
-	 * Convention for models is 		m:model_name.primary_key_value
+	 * Convention for controllers is    c:controller_name
+	 * Convention for models is        m:model_name.primary_key_value
 	 *
-	 * @return	string
+	 * @return    string
 	 */
 	public function acl_id();
 
@@ -32,8 +32,8 @@ interface AACL_Core_Resource
 	 *
 	 * If $return_current is TRUE, return value should be the currently requested action or NULL if not known.
 	 *
-	 * @param	bool	$return_current [optional]
-	 * @return	mixed
+	 * @param    bool $return_current [optional]
+	 * @return    mixed
 	 */
 	public function acl_actions($return_current = FALSE);
 
@@ -48,20 +48,19 @@ interface AACL_Core_Resource
 	 *
 	 * Objects which implement this interface should check the first parameter if an instance of Model_User
 	 *
-	 * @param	Model_User	$user [optional] logged in user model
-	 * @param	object    	$condition [optional] condition to test
-	 * @return	mixed
+	 * @param    Model_User $user [optional] logged in user model
+	 * @param    object     $condition [optional] condition to test
+	 * @return    mixed
 	 */
-	public function acl_conditions($user = NULL, $condition = NULL);
+	public function acl_conditions(Model_User $user = NULL, $condition = NULL);
 
 	/**
 	 * Returns an instance of the current object suitable for calling the above methods
 	 *
 	 * Note that the object instance returned should not be used for anything except querying the acl_* methods
 	 *
-	 * @param	string	Class name of object required
-	 * @return	Object
+	 * @param    string    Class name of object required
+	 * @return    Object
 	 */
 	public static function acl_instance($class_name);
-
-} // End AACL_Core_Resource
+} // End ACL_Resource
