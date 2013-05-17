@@ -218,23 +218,21 @@ class ACL {
 	 */
 	protected static function _get_rules($user = FALSE, $force_load = FALSE)
 	{
-		if (! isset(ACL::$_rules) || $force_load)
+		if ( ! isset(ACL::$_rules) || $force_load)
 		{
-			$select_query = ORM::factory('ACL_Rule');
+			$select_query = ORM::factory('ACL_Rule')
+				// User is guest
+				->where('role_id', '=', NULL);
+
 			// Get rules for user
 			if ($user instanceof Model_User and $user->loaded())
 			{
-				ACL::$_rules = $select_query->where('role_id', 'IN', $user->roles->find_all()->as_array());
+				ACL::$_rules = $select_query->or_where('role_id', 'IN', $user->roles->find_all()->as_array());
 			}
 			// Get rules for role
 			elseif ($user instanceof Model_Role and $user->loaded())
 			{
-				ACL::$_rules = $select_query->where('role_id', '=', $user->id);
-			}
-			// User is guest
-			else
-			{
-				ACL::$_rules = $select_query->where('role_id', '=', NULL);
+				ACL::$_rules = $select_query->or_where('role_id', '=', $user->id);
 			}
 
 			ACL::$_rules = $select_query
