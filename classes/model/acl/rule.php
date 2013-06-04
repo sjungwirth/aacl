@@ -54,14 +54,9 @@ class Model_ACL_Rule extends ORM_ACL {
 	 */
 	public function grant(array $data)
 	{
-		if ($this->loaded())
-		{
-			throw new Exception('called grant on loaded rule');
-		}
-
 		$this->values($data);
 		$this->check();
-		ACL::grant($this->role, $this->resource, $this->action, $this->condition);
+		ACL::grant($this->role_id ? $this->role : NULL, $this->resource, $this->action, $this->condition);
 		return $this;
 	}
 
