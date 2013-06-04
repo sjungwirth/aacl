@@ -58,7 +58,7 @@ class ACL {
 			// Check role exists
 			if ( ! $role->loaded())
 			{
-				throw new ACL_Exception('Unknown role :role passed to ACL::grant()',
+				throw new Kohana_Exception('Unknown role :role passed to ACL::grant()',
 					array(':role' => $role->name));
 			}
 
