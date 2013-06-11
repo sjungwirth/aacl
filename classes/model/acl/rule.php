@@ -56,7 +56,11 @@ class Model_ACL_Rule extends ORM_ACL {
 	{
 		$this->values($data);
 		$this->check();
-		ACL::grant($this->role_id ? $this->role : NULL, $this->resource, $this->action, $this->condition);
+		if ( ! $this->role_id)
+		{
+			$this->role_id = NULL;
+		}
+		$this->save();
 		return $this;
 	}
 

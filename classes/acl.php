@@ -184,14 +184,16 @@ class ACL {
 			}
 		}
 
+		$message = $action.' '.$resource->acl_id();
+
 		// No access rule matched
 		if ($user)
 		{
-			throw new ACL_Exception_403;
+			throw new ACL_Exception_403('you don\'t have permission to '.$message);
 		}
 		else
 		{
-			throw new ACL_Exception_401;
+			throw new ACL_Exception_401('you need to login to '.$message);
 		}
 	}
 
