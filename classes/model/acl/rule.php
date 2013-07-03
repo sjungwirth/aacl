@@ -33,7 +33,13 @@ class Model_ACL_Rule extends ORM_ACL {
 		'resource' => array('type' => 'varchar'),
 		'action' => array('type' => 'varchar'),
 		'condition' => array('type' => 'varchar'),
+		'description' => array('type' => 'varchar'),
+		'created' => array('type' => 'int'),
+		'updated' => array('type' => 'int'),
 	);
+
+	protected $_created_column = array('column' => 'created', 'format' => TRUE);
+	protected $_updated_column = array('column' => 'updated', 'format' => TRUE);
 
 	protected $_belongs_to = array(
 		'role' => array(
