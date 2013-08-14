@@ -21,7 +21,7 @@ class Controller_ACL extends Controller_Template implements ACL_Resource {
 	public function acl_id()
 	{
 		// Controller namespace, controller name
-		return 'c:'.strtolower($this->request->controller());
+		return 'c:'.strtolower(substr(get_class($this), 11));
 	}
 
 	/**
