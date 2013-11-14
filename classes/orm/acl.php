@@ -17,12 +17,12 @@ abstract class ORM_ACL extends ORM implements ACL_Resource {
 	 * @var array
 	 * model specific overrides
 	 */
-	protected static $_acl_actions = array();
+	protected $_acl_actions = array();
 
 	/**
 	 * @var array
 	 */
-	protected static $_acl_orm_actions = array('create', 'read', 'update', 'delete');
+	protected $_acl_orm_actions = array('create', 'read', 'update', 'delete');
 
 	/**
 	 * @var string
@@ -71,7 +71,7 @@ abstract class ORM_ACL extends ORM implements ACL_Resource {
 		}
 
 		// Return default model actions
-		return array_merge(static::$_acl_actions, static::$_acl_orm_actions);
+		return array_merge($this->_acl_actions, $this->_acl_orm_actions);
 	}
 
 	/**
