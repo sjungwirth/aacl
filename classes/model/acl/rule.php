@@ -13,15 +13,10 @@
  */
 class Model_ACL_Rule extends ORM_ACL {
 
-	protected static $_acl_actions = array(
-		'grant',
-		'revoke',
-	);
-
 	/**
 	 * Override Default model actions
 	 */
-	protected static $_acl_orm_actions = array();
+	protected $_acl_orm_actions = array();
 
 	protected $_table_name = 'acl';
 
@@ -51,7 +46,7 @@ class Model_ACL_Rule extends ORM_ACL {
 	// TODO: validation
 
 	/**
-	 * ACL action
+	 * @acl
 	 * grant access / create rule
 	 *
 	 * @param array $data
@@ -71,7 +66,7 @@ class Model_ACL_Rule extends ORM_ACL {
 	}
 
 	/**
-	 * ACL action
+	 * @acl
 	 * revoke access / delete rule
 	 *
 	 * @return bool

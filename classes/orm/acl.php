@@ -15,12 +15,6 @@ abstract class ORM_ACL extends ORM implements ACL_Resource {
 
 	/**
 	 * @var array
-	 * model specific overrides
-	 */
-	protected $_acl_actions = array();
-
-	/**
-	 * @var array
 	 */
 	protected $_acl_orm_actions = array('create', 'read', 'update', 'delete');
 
@@ -70,8 +64,24 @@ abstract class ORM_ACL extends ORM implements ACL_Resource {
 			return NULL;
 		}
 
+		$class = new ReflectionClass($this);
+
+		$methods = $class->getMethods(ReflectionMethod::IS_PUBLIC);
+
+		$acl_actions = array();
+		foreach ($methods as $method)
+		{
+			if ($method->class != get_called_class()) continue;
+
+			if ($method->isStatic() || $method->isAbstract()) continue;
+
+			if ( ! strpos($method->getDocComment(), '@acl')) continue;
+
+			$acl_actions[] = $method->name;
+		}
+
 		// Return default model actions
-		return array_merge($this->_acl_actions, $this->_acl_orm_actions);
+		return array_merge($acl_actions, $this->_acl_orm_actions);
 	}
 
 	/**
