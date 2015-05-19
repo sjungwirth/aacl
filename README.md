@@ -1,18 +1,9 @@
 # AACL
 
 AACL is (yet) Another ACL library for Kohana 3.
+Based on [banks AACL](http://github.com/banks/aacl#readme)
 
-## Why another one?
-
-Simply because none really fitted my needs. I don't for a minute suggest it is inherently better than any others or that you should use this instead of X library - it is just a library that fits my needs.
-You are free to use it and/or modify it if you think it will work well for you.
-
-### My Aims
-
-What makes my needs so incompatible with other libraries? Well, my aims for an ACL are given below. I've not found anything else that was close enough to warrant forking, 
-especially since one of my core aims is simplicity and small amounts of clear code.
-
-I need an ACL to:
+### Goals
 
 -  define *all* rules in database so that applications can provide a UI for simple but fine-grained control of user's privileges;
 
@@ -33,13 +24,11 @@ write this.
 
 ## User Guide
 
-This user guide is intended to explain the (hopefully simple) concepts and implementation of AACL. In each section, concepts go first, then implementation then examples.
+This user guide is intended to explain the (hopefully simple) concepts and implementation of ACL. In each section, concepts go first, then implementation then examples.
 
 ### Auth integration: Users and Roles
 
-AACL uses [kohana auth](http://github.com/kohanan/auth) module with no additions or modifications. 
-Since I use Sprig exclusively, I also use my [Sprig Auth Driver](http://github.com/banks/sprig-auth) but if you want to mix and match, 
-an ORM User/Auth driver should work just as well.
+ACL is compatible with [kohana auth](http://github.com/kohanan/auth) module and (kohana ORM)[https://github.com/kohana/orm/blob/3.3/master/classes/Kohana/Auth/ORM.php].
 
 This means:
 
@@ -51,21 +40,16 @@ This means:
 	In reality you may choose to special case this in a UI and represent it as an 'active account' checkbox rather 
 	than requiring end-users to understand that it is different from other roles.
 
-### Sprig and other ORMs
-
-AACL ships with a Sprig based Rule model and Sprig based class for easily turning Sprig models into Access Controlled Resources. 
-It should be relatively trivial to modify the library to work with other ORMs but as this is only likely to be used by me for now, a flexible driver system seems unnecessary.
-
 ### Concept: ACL Resources
 
-Any PHP class that implements `AACL_Resource` interface is considered a resource. This means that just by implementing it, rules can be added based on that object.
+Any PHP class that implements `ACL_Resource` interface is considered a resource. This means that just by implementing it, rules can be added based on that object.
 
-AACL ships with two abstract Resource classes `Controller_AACL` and `Sprig_AACL` which allow any extending controllers or models to automatically become valid resources
+ACL ships with two abstract Resource classes `Controller_ACL` and `ORM_ACL` which allow any extending controllers or models to automatically become valid resources
 against which access rules can be created.
 
-#### AACL_Resource Interface
+#### ACL_Resource Interface
 
-The `AACL_Resource` interface defines four methods:
+The `ACL_Resource` interface defines four methods:
 
 -  **public function acl_id()**
 	
@@ -77,8 +61,8 @@ The `AACL_Resource` interface defines four methods:
 	
 	This method servers a dual purpose. When the argument `$return_current` is false, the method should return an array of string names, one for each action
 	that can be carried out on the resource. For no specific actions, an empty array should be returned.
-	-  `Controller_AACL` returns an array containing the names of all public action methods automatically.
-	-  `Sprig_AACL` returns actions 'create', 'read', 'update', 'delete'. These can be changed by overriding this method in specific models.
+	-  `Controller_ACL` returns an array containing the names of all public action methods automatically.
+	-  `ORM_ACL` returns actions 'create', 'read', 'update', 'delete'. These can be changed by overriding this method in specific models.
 	
 -  **public function acl_conditions(Model_User $user = NULL, $condition = NULL)**
 	
@@ -95,21 +79,21 @@ The `AACL_Resource` interface defines four methods:
 	we need a way to get and instance of the object given only the class name. Not that the object returned shoul not be used for anything except calling `acl_*` methods
 	to discover resource properties. 
 
-Note that the `Model_AACL_Rule` itself extends `Sprig_AACL`. Instead of the default CRUD actions though it just specifies `grant` and `revoke` actions. This means you can
+Note that the `Model_ACL_Rule` itself extends `ORM_ACL`. Instead of the default CRUD actions though it just specifies `grant` and `revoke` actions. This means you can
 create rules about whether a role can itsef grant or revoke access! Note that the checking is not automatic though. That would prevent installers from creating rules or similar
 due to not having a user logged in yet! It is still up to the developer to check the user has permission to grant or revoke using check().
 
 ### Resource Conditions
 
-`AACL_Resource` objects can define conditions which allow rules to provide fine-grained control. Since conditions are resource specific, only conditions defined by the resource
+`ACL_Resource` objects can define conditions which allow rules to provide fine-grained control. Since conditions are resource specific, only conditions defined by the resource
 are available when defining rules for that resource.
 
 A typical and common use for this is allowing Users to edit their own posts but not others'. The implementation for such a condition is given below.
 
-	// Sprig_AACL defines the AACL_Request interface but with no available conditions (since they will be model-specifc)
+	// ORM_ACL defines the ACL_Request interface but with no available conditions (since they will be model-specifc)
 	// We don't need to redefine the acl_id() or acl_actions() methods as long as we are happy with the defaults
 	
-    class Model_Post extends Sprig_AACL
+    class Model_Post extends ORM_ACL
     {
     	... Set up model ...
     	
@@ -143,20 +127,20 @@ A typical and common use for this is allowing Users to edit their own posts but 
 As you have probably guessed, `$user` is populated by the logged in user object when the rule is evaluated so conditions allow a neat 
 and simple way of adding fine-grained user/resource specific rules in a general way.
 
-### AACL Rules
+### ACL Rules
 
-Once you have some Controllers, Models or other objects defined as AACL_Resources, you can grant access to specific user roles.
+Once you have some Controllers, Models or other objects defined as ACL_Resources, you can grant access to specific user roles.
 
 The first major concept here is that rules are ONLY 'allow' type rules. 
 This is to keep things simple and to prevent the need for having a role hierarchy to decide which rules take precedence.
 
-Once `AACL::check($resource)` has been called, the user must be granted access to `$resource` by at least one rule otherwise the check fails.
+Once `ACL::check($resource)` has been called, the user must be granted access to `$resource` by at least one rule otherwise the check fails.
 
 Rules do have a simple inheritance to them in that they can be made more or less specific by their definitions.
 
 A rule is defined using the `grant()` function described below:
 
-**AACL::grant(mixed $role, string $resource_id, string $action = NULL, string $condition = NULL)**
+**ACL::grant(mixed $role, string $resource_id, string $action = NULL, string $condition = NULL)**
 
 Params:
 
@@ -178,35 +162,35 @@ Params:
 	
 -  **$conditions**
 
-	Specifies a condition of the resource which must be met to allow access. For example, `AACL::grant('login', 'm:post', 'edit', 'is_author');` 
+	Specifies a condition of the resource which must be met to allow access. For example, `ACL::grant('login', 'm:post', 'edit', 'is_author');` 
 	allows any user access to edit a post *provided* that they are the post's author. If the condition string passed doesn't match a valid condition 
 	returned by `$resource->acl_conditions()` then the rule will NEVER match!
 
 To grant access to multiple (but not all) actions of a resource, multiple rules should be used. For example:
 
-    AACL::grant('admin', 'm:post'); 						// Grant all rights to admins for post objects
+    ACL::grant('admin', 'm:post'); 						// Grant all rights to admins for post objects
     
-    AACL::grant('moderator', 'm:post', 'view'); 			// Moderators can view...
-    AACL::grant('moderator', 'm:post', 'edit');				// ... or edit any post
+    ACL::grant('moderator', 'm:post', 'view'); 			// Moderators can view...
+    ACL::grant('moderator', 'm:post', 'edit');				// ... or edit any post
     
-    AACL::grant('login', 'm:post', 'view');					// Normal users can view all posts...
-    AACL::grant('login', 'm:post', 'edit', 'is_author');	// ... but only edit their own
+    ACL::grant('login', 'm:post', 'view');					// Normal users can view all posts...
+    ACL::grant('login', 'm:post', 'edit', 'is_author');	// ... but only edit their own
     
-    AACL::grant('sales', 'm:page.32', 'edit');				// Sales team can edit page with ID 32 (ths is probably vital 
+    ACL::grant('sales', 'm:page.32', 'edit');				// Sales team can edit page with ID 32 (ths is probably vital 
     														// for one of their campaigns...) but no other pages
 
 #### Revoking access
 
-`AACL::revoke()` is used to remove rules and accepts exactly the same arguments used to grant the rules. 
+`ACL::revoke()` is used to remove rules and accepts exactly the same arguments used to grant the rules. 
 Note that the arguments don't have to exactly match a defined rule to delete it. For example
 
-	AACL::grant('staff', 'm:post', 'edit');					// 1
-	AACL::grant('staff', 'm:post', 'delete');				// 2
-	AACL::grant('staff', 'm:comment', 'delete');			// 3
+	ACL::grant('staff', 'm:post', 'edit');					// 1
+	ACL::grant('staff', 'm:post', 'delete');				// 2
+	ACL::grant('staff', 'm:comment', 'delete');			// 3
 	
-	AACL::revoke('staff', 'm:post', 'edit');				// Removes 1 from above
-	AACL::revoke('staff', 'm:post');						// Removes 1 AND 2 from above
-	AACL::revoke('staff', '*');								// Removes all rules for 'staff' (i.e. they now have access to nothing)
+	ACL::revoke('staff', 'm:post', 'edit');				// Removes 1 from above
+	ACL::revoke('staff', 'm:post');						// Removes 1 AND 2 from above
+	ACL::revoke('staff', '*');								// Removes all rules for 'staff' (i.e. they now have access to nothing)
 
 
 #### Rule Specificity
@@ -217,28 +201,28 @@ If you grant a rule which is *more* permissive than one or more rules that curre
 
 One of the key requirements for this library is to make checking access rights as simple and clear as possible.
 
-All checking is done using `AACL::check()` described below:
+All checking is done using `ACL::check()` described below:
 
-**AACL::check(AACL_Resource $resource, $action = NULL)**
+**ACL::check(ACL_Resource $resource, $action = NULL)**
 
 -  **$resource** 
 
-	The AACL_Resource being requested. `check()` will attempt to get the current action from the resource automatically
+	The ACL_Resource being requested. `check()` will attempt to get the current action from the resource automatically
 	using `$reource->acl_actions(TRUE)`. If this returns a string action then that action will be used for checking without having to specify the `$action` parameter.
 	
 	Note that the string resource ID can't be specified since the `check()` function requires access to the objects acl_* methods. It
 	is simpler not to have to define mappings from id back to class name in some separate global class in order to create instances.
 	If I think of a way to make this neat and relatively seemless I may implement it but I don't feel this is a big issue.
 	
-	This does mean that currently there is no real way to check permisions on a controller resource other than the one in which the call to `AACL::check()` resides. 
+	This does mean that currently there is no real way to check permisions on a controller resource other than the one in which the call to `ACL::check()` resides. 
 	In practice this is unlikely to be a real limitiation.
 	
-	Since a controller object knows the currently executing action, the current controller action can be checked simply with `AACL::check($this)`.
+	Since a controller object knows the currently executing action, the current controller action can be checked simply with `ACL::check($this)`.
 	Since models don't inherently know which action is being requested, `$action` parameter must be specified otherwise the user will need to have access to ALL actions
 	of the resource for the check to pass.
 	
 	Since controllers inherently know about the currently executing action, all actions in a controller will automatically be protected (according to their action-specific 
-	rules) simply by calling `AACL::check($this)` in the controller's `before()` method.
+	rules) simply by calling `ACL::check($this)` in the controller's `before()` method.
 	
 -  **$action** 
 
@@ -249,19 +233,19 @@ All checking is done using `AACL::check()` described below:
 	    public function action_one()
 	    {
 	    	// Check permission for this action
-	    	AACL::check($this);
+	    	ACL::check($this);
 	    	
 	    	// Check permission for other action
-	    	AACL::check($this, 'other');
+	    	ACL::check($this, 'other');
 	    }
 
 #### Failing check()
 
 If the user doesn't have access to the required object and action, AACL throws an exception which must be handled to resolve the issue.
 
-If the user isn't logged in, a `AACL_Exception_401` is thrown which should be caught and the user re-directed to a login form.
+If the user isn't logged in, a `ACL_Exception_401` is thrown which should be caught and the user re-directed to a login form.
 
-If the user is logged in but lacks the privileges to access a resource, an `AACL_Exception_403` is throw. 
+If the user is logged in but lacks the privileges to access a resource, an `ACL_Exception_403` is throw. 
 It is left to the developer to catch this and display an appropriate message.
 
 These should both be caught in `bootstrap.php` something like this:
@@ -272,11 +256,11 @@ These should both be caught in `bootstrap.php` something like this:
     {
     	$request->execute();
     }
-    catch (AACL_Exception_401 $e)
+    catch (ACL_Exception_401 $e)
     {
     	// Redirect to login
     }
-    catch (AACL_Exception_403 $e)
+    catch (ACL_Exception_403 $e)
     {
     	// Issue request for access denied page or just display a template
     }
@@ -288,7 +272,7 @@ These should both be caught in `bootstrap.php` something like this:
 ### Listing Resources
 
 A major motivation for this library is to make it easy to create Rules using a UI. To facilitate this, all potential resources defined in the application can be found using
-`AACL::list_resources()`. This returns a multi-dimensional array listing all the resources and any actions or conditions they define.
+`ACL::list_resources()`. This returns a multi-dimensional array listing all the resources and any actions or conditions they define.
 
 It works by scanning the file system and using reflection so in a big app this is likely to take some time. I feel that is not a big deal here though as it should only ever be done in 
 admin control panels not in public parts of the app and it allows a very powerful system that doesn't require maintaining lenthly and complex mappings of classes and resources.
