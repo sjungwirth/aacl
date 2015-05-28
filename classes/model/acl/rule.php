@@ -96,8 +96,9 @@ class Model_ACL_Rule extends ORM_ACL {
 	{
 		if (empty($this->resource))
 		{
+			// this rule is invalid
 			// No point checking anything else!
-			return TRUE;
+			return FALSE;
 		}
 
 		if (is_null($action))

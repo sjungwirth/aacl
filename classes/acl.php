@@ -238,7 +238,7 @@ class ACL {
 			}
 
 			ACL::$_rules = $select_query
-				->order_by('LENGTH("resource")', 'ASC')
+				->order_by('LENGTH("action")', 'ASC')
 				->find_all()->as_array();
 		}
 
