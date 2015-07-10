@@ -94,21 +94,21 @@ class Model_ACL_Rule extends ORM_ACL {
 	 */
 	public function allows_access_to(ACL_Resource $resource, $action = NULL, Model_User $user = NULL)
 	{
-		if (empty($this->resource))
+		if ( ! $this->_object['resource'])
 		{
 			// this rule is invalid
 			// No point checking anything else!
 			return FALSE;
 		}
 
-		if (is_null($action))
+		if ($action === NULL)
 		{
 			// Check to see if Resource wants to define it's own action
 			$action = $resource->acl_actions(TRUE);
 		}
 
 		// Make sure action matches
-		if ( ! is_null($action) AND ! empty($this->action) AND $action !== $this->action)
+		if ($this->_object['action'] AND $action !== $this->_object['action'])
 		{
 			// This rule has a specific action and it doesn't match the specific one passed
 			return FALSE;
@@ -122,7 +122,7 @@ class Model_ACL_Rule extends ORM_ACL {
 		while ( ! $matches)
 		{
 			// Attempt match
-			if ($this->resource === $resource_id)
+			if ($this->_object['resource'] === $resource_id)
 			{
 				// Stop loop
 				$matches = TRUE;
@@ -147,7 +147,7 @@ class Model_ACL_Rule extends ORM_ACL {
 		}
 
 		// Now we know this rule matches the resource, check any match condition
-		if ( ! empty($this->condition) AND ! $resource->acl_conditions($user, $this->condition))
+		if ($this->_object['condition'] AND ! $resource->acl_conditions($user, $this->_object['condition']))
 		{
 			// Condition wasn't met (or doesn't exist)
 			return FALSE;

@@ -172,10 +172,17 @@ class ACL {
 		// User is logged in, check rules
 		$rules = ACL::_get_rules($user);
 
+		if ($action === NULL)
+		{
+			// Check to see if Resource wants to define it's own action
+			$action = $resource->acl_actions(TRUE);
+		}
+
 		/**
 		 * @var Model_ACL_Rule $rule
 		 */
-		foreach ($rules as $rule)
+		$all_rules = array_merge(Arr::get($rules, $action, array()), Arr::get($rules, 'null', array()));
+		foreach ($all_rules as $rule)
 		{
 			if ($rule->allows_access_to($resource, $action, $user))
 			{
@@ -229,17 +236,24 @@ class ACL {
 			// Get rules for user
 			if ($user instanceof Model_User and $user->loaded())
 			{
-				ACL::$_rules = $select_query->or_where('role_id', 'IN', $user->roles->find_all()->as_array());
+				$select_query->or_where('role_id', 'IN', $user->roles->find_all()->as_array());
 			}
 			// Get rules for role
 			elseif ($user instanceof Model_Role and $user->loaded())
 			{
-				ACL::$_rules = $select_query->or_where('role_id', '=', $user->id);
+				$select_query->or_where('role_id', '=', $user->id);
 			}
 
-			ACL::$_rules = $select_query
+			$rules = $select_query
 				->order_by('LENGTH("action")', 'ASC')
 				->find_all()->as_array();
+
+			// index rules by action for faster checking
+			ACL::$_rules = array();
+			foreach ($rules as $rule)
+			{
+				ACL::$_rules[$rule->action ?: 'null'][] = $rule;
+			}
 		}
 
 		return ACL::$_rules;

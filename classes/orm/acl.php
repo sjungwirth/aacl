@@ -32,7 +32,7 @@ abstract class ORM_ACL extends ORM implements ACL_Resource {
 	 */
 	public function acl_id()
 	{
-		if ( ! empty($this->_acl_id) and ! $this->changed())
+		if ($this->_acl_id and ! $this->changed())
 		{
 			return $this->_acl_id;
 		}
@@ -40,7 +40,7 @@ abstract class ORM_ACL extends ORM implements ACL_Resource {
 		// Create unique id from primary key if it is set
 		$id = (string) $this->pk();
 
-		if ( ! empty($id))
+		if ($id)
 		{
 			$id = '.'.$id;
 		}
