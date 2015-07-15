@@ -33,7 +33,7 @@ class ACL {
 	 */
 	public static function get_loggedin_user()
 	{
-		return Auth::instance()->get_user();
+		return Auth::instance()->get_user(NULL);
 	}
 
 
