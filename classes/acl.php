@@ -313,6 +313,17 @@ class ACL {
 		return ACL::$_resources;
 	}
 
+    /**
+     * Reset cached acl rule set
+     * @return bool
+     */
+    public static function reset_acl_rules()
+    {
+        ACL::$_rules = null;
+
+        return true;
+    }
+
 	protected static function _list_classes($files = NULL)
 	{
 		if (is_null($files))
